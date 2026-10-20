@@ -20,36 +20,22 @@ Statuses: **Planned**, **In progress**, **Verified**, **Blocked**. Blocked entri
 | --- | --- | --- | --- |
 | M0 — Planning | Brief and preferences | Scope, contracts, UX, delivery, acceptance, and AI record are consistent and reviewable | Verified: documentation only |
 | M1 — Foundation | M0; instruction to implement | Workspace, pinned tools, Mongo, startup config, shared contracts, and minimal web/API compile/run/test smoke | Verified: T01 and M1 setup portion of T12; full T12 remains Pending |
-| M2 — Authentication API | M1 | User/session persistence, hashing, signup/signin/me/logout, request controls, and direct API tests pass | Verified: T02 and T04–T08; T03 schema/API portions (browser parity Pending M3); M2 portions of T12 and T16 |
-| M3 — Browser journey | M2 contract; UI shell may start after M1 | Three pages, session states, errors, and complete browser journey work | Planned |
+| M2 — Authentication API | M1 | User/session persistence, hashing, signup/signin/me/logout, request controls, and direct API tests pass | Verified: T02 and T04–T08; T03 schema/API portions (browser parity closed at M3); M2 portions of T12 and T16 |
+| M3 — Browser journey | M2 contract; UI shell may start after M1 | Three pages, session states, errors, and complete browser journey work | Verified: T03 browser parity, T09, T10; initial T11 review recorded (full T11 remains Pending M4) |
 | M4 — Quality gate | M2, M3 | Meaningful integration/browser checks, responsive/accessibility review, safe logs, production build review, and CI are complete | Planned |
 | M5 — Submission ready | M4 | Fresh-checkout README walkthrough, accurate AI record, evidence review, and publication-ready tracked files | Planned |
 | M6 — Submission | M5; authorized submission action and destination details | Public GitHub revision verified and recruiter link handoff actually performed | Planned |
 
 The dependency path is M1 → M2 → M3 integration → M4 → M5 → M6. After M1, the UI shell and backend work can run in parallel against the frozen contracts; shared-contract edits must be coordinated. Do not parallelize competing edits to the same contract or use a UI mock as proof that the backend works.
 
-## Current handoff — 2026-10-20 (after M2)
+## Current handoff — 2026-10-21 (after M3)
 
-- **Completed:** M0, M1, and M2. Shared auth contracts are revision `98ad6af` and the authentication API `e1dde67`, both on local `main`; M1 remains `7a16842`. The API implements signup, signin, the protected `GET /api/auth/me`, and logout, with Mongo-backed sessions, request controls, rate limits, one safe error shape, and fixed-field request logs. The last complete gate (`npm run check:foundation`) passed 205 tests plus lint/format, strict typecheck, and ordered builds.
-- **Unfinished:** M3–M6 remain Planned. The web app is still the M1 readiness page: there is no typed API client, session query or coordinator, signup/signin/welcome screen, or browser test. T01, T02, and T04–T08 pass. T03 (browser parity) and T09–T16 remain Pending, including the unfinished portions of T12, T14, and T16.
-- **Decisions to retain:** everything above, plus the M2 clarifications in the change log:
-  - unpaired surrogates are rejected;
-  - non-field validation failures get a generic message;
-  - unknown API routes return `NOT_FOUND`;
-  - request controls cover every non-GET/HEAD/OPTIONS `/api` request, before body parsing;
-  - compressed bodies get `415`;
-  - local HTTP modes drop HSTS and `upgrade-insecure-requests`.
-
-  The cookie is `session` locally and `__Host-session` in production. Authentication is required by default, and handlers opt out with the method-level `@Public()`. Rate limits are 5/10/30/120 per minute per route and client.
-- **Blockers and resume prerequisites:** none known. Select the pinned Node/npm first; the M2 run used a temporary tool directory again, and `nvm install` from the repository root is the permanent option. Recheck Docker and `npm run db:ready` with the README when resuming. No Git remote is configured. Repository and recruiter details are deferred M6 inputs, not blockers for M3.
-- **Next concrete task:** M3 task 1, a typed API client in `apps/web` built on the actual contract:
-  - relative `/api` URLs with `credentials: 'same-origin'`;
-  - `X-CSRF-Protection: 1` and a JSON content type on every POST, with the browser supplying `Origin`;
-  - a 15-second timeout combined with TanStack Query's `AbortSignal`;
-  - responses decoded with `userResponseSchema` and `apiErrorResponseSchema` from `@easy-generator/contracts`;
-  - typed errors that separate field validation, `INVALID_CREDENTIALS`, `UNAUTHENTICATED`, `RATE_LIMITED` with `Retry-After`, and network/5xx unavailability.
-
-  The stable `QueryClient`, the `['auth', 'me']` session query, and the coordinator follow as M3 task 2 (Architecture A11).
+- **Completed:** M0–M3. M3 implementation is revision `0fa1348` on local `main`. The typed client, stable session query/coordinator, signup/signin/application routes, recovery states, accessible fields, rendering boundary, and real browser suite are implemented. `npm run check` passed lint/format, strict typecheck, **239 workspace tests (73 contracts, 128 API, 38 web)**, builds, and **10 Chromium tests**.
+- **Unfinished:** M4–M6 remain Planned. T01–T10 pass. T11–T16 remain Pending, with initial T11 and existing T12/T14/T16 portions recorded. No CI, final security/release gate, public repository, or recruiter handoff is claimed.
+- **Decisions to retain:** baseline v1.2 and M2's contract clarifications; React/RHF/shared Zod/TanStack/native fetch; opaque HttpOnly sessions; read-only session checks; exact origins (`http://localhost:5173` dev, `http://localhost:3000` compiled test/preview); production rate limits 5/10/30/120. No API or shared schema changed for the UI.
+- **Runtime and test setup:** Node 24.22.0/npm 12.2.0 are now installed in nvm; use `source ~/.nvm/nvm.sh && nvm use` in this shell, or select the pinned versions with your version manager. Docker's project replica set remains on 27018; 27017 was untouched. Recheck `npm run db:ready` before resuming. Playwright 1.64.1 / Chromium 1248 download is in ignored `.cache/ms-playwright`; README includes installation and test commands. Browser cases own port 3000 and create/drop only their own generated databases. The last data-hygiene check found no generated test databases.
+- **Blockers:** none for M3. Native browser 200% zoom and actual password-manager/autofill behavior remain part of the full M4 T11 review. M3 verified keyboard behavior, semantic autofill attributes, specified widths, and a CSS 200% enlargement probe without claiming those remaining manual checks passed.
+- **Next concrete task:** when M4 is authorized, begin its quality review from the recorded M3 evidence, complete T11's remaining manual cases, review production controls and logs, then add the pinned-runtime/MongoDB GitHub Actions workflow. There is still no Git remote; publication and recruiter communication remain M6.
 
 ## M1 — Foundation tasks
 
@@ -149,6 +135,27 @@ No M2 blocker remains. Linearizable session reads cost about 0.1 s per authentic
 
 Exit evidence: T03's remaining browser-parity portion, T09, and T10 pass; perform an initial T11 review. No extra product pages are introduced.
 
+### M3 result — 2026-10-21
+
+Implementation revision: `0fa1348` (`feat(web): implement and verify M3 browser authentication journey`).
+
+Implemented the browser work in the documented dependency order: typed HTTP transport, session query/coordinator and routes, shared layout/fields, signup/signin, welcome/logout, then recovery/race cases, rendering boundary, Playwright and the initial accessibility review. No material contract contradiction required an API/schema change.
+
+- Typed errors separate validation, credential failure, unauthenticated, conflict, throttling, request rejection, and unavailability. Requests use a 15-second abort budget, same-origin cookies, shared response decoding, and the required JSON/CSRF headers.
+- Query caches only public users/null. Auth status also checks verification/error/navigation state. Credential actions are awaited directly; logout is a credential-free mutation. Cancellation and immediate action guards suspend checks, including manual Retry, during mutations. Failed verification withholds protected content while preserving public forms.
+- Shared resolvers preserve password characters, normalize email/name, and display field/server errors. Recovery includes expiry, failed logout, offline failure without replay, rate-limit deadlines, and the rendering boundary. Navigation uses fixed destinations.
+- The browser fixture serves the real compiled UI/API from a fresh server and owned database per test. All real rate limits stay enabled. Expiry advances the injected server clock while the session record remains stored, independently of MongoDB TTL.
+- `npm run check` passed 239 workspace tests and 10 browser tests plus lint/format, strict typecheck, and builds. A final fixture strengthening was followed by typecheck/lint and the browser/build suite. Six deliberate production mutations were caught and restored. Detailed commands and limitations are in Verification.
+
+Corrections from executable tests and the single-agent contract review:
+
+1. RHF schedules a second first-error focus using a timer. A real Chromium probe showed it stealing focus during rapid correction, routing the intended password fill to Name. Disable the duplicate default and focus the first invalid field once in the invalid-submit callback; retain normal RHF registration and field state.
+2. Do not derive mutation-time authentication from the presence of cached data. After a failed verification that could temporarily expose an unverified cached user. Preserve the prior derived UI status during the action; a regression and deliberate mutation prove the boundary.
+3. Manual session Retry must also respect the action lock; an unavailable notice can remain mounted during signin.
+4. Reconnect may automatically settle the session before a test clicks Retry. The browser test now asserts that recovery and the absence of POST replay instead of requiring a vanished button.
+
+T03, T09, and T10 close at M3. Initial T11 observations are recorded, with its unperformed manual criteria still Pending. M4 was not started; CI/publication/recruiter actions were not performed.
+
 ## M4 — Quality and CI tasks
 
 1. Run the combined meaningful test suite; keep test databases isolated and test data independent. Resolve failures before adding extras.
@@ -179,7 +186,7 @@ Verify the public repository, submitted commit, README, AI.md, and CI result. Pr
 
 ## Command contract to implement
 
-These are milestone-spanning command interfaces. M1 implements install, database setup, development, lint/typecheck/tests, builds, preview, and production startup. Full `check` and `test:e2e` remain Pending until M3/M4; `check:foundation` runs the currently applicable M1 checks. README lists actual available commands.
+These are milestone-spanning command interfaces. M1 implements install, database setup, development, lint/typecheck/tests, builds, preview, and production startup. `check` and `test:e2e` are implemented at M3; `check:foundation` runs lint/typecheck/workspace tests/build without browsers. README lists actual available commands.
 
 | Command | Expected behavior |
 | --- | --- |
@@ -228,5 +235,9 @@ Planning estimate revised with the explicit database setup: M1 45–75 minutes; 
 | 2026-10-20 | Added root CLAUDE.md for Claude Code: imports AGENTS.md, then records verified commands, single-test invocations, and code-level conventions | User's Claude Code /init request. By default Claude Code loads AGENTS.md only when a project has no CLAUDE.md, so the import keeps one shared guide. Product scope, contracts, and checks unchanged | Documentation only |
 | 2026-10-20 | Start authorized M2; clarify contract gaps before dependent code: reject unpaired UTF-16 surrogates in string inputs; ordered/aborting field checks; generic validation message without `fields` for non-field issues; `404 NOT_FOUND` for unknown API routes; request controls scoped to non-GET/HEAD/OPTIONS `/api` requests and run before parsing; compressed bodies `415`; Helmet defaults in production with HSTS/`upgrade-insecure-requests` disabled only for local HTTP modes | Found while mapping A04/A05/A07 onto the pinned Zod, Nest, and Express behavior. Lone surrogates would otherwise be silently replaced during UTF-8 hashing/storage (exact preservation, T03); Nest's default 404 echoes the request path (T08); Helmet's HTTPS-only directives would break the documented loopback preview (T07/T12). No product scope, route, credential, cookie, or concern-policy change | Clarified in Architecture A04/A05/A07 before implementation |
 | 2026-10-20 | Close M2 authentication API; adopt Helmet 8.3.0, cookie-parser 1.4.7, and `@nestjs/throttler` 6.7.1 | T02 and T04–T08 passed; T03 schema/API portions passed with browser parity Pending; M2 portions of T12/T16 recorded. Independent review fixes restored A04/A05/A02 compliance without contract changes: strict rejection of prototype-shaped keys and no recursive pre-validation stripping (deep-nesting 500), and case-insensitive `/api` handling consistent with Express routing. Implementation `e1dde67`; contracts `98ad6af` | Verified locally; next milestone M3 |
+
+| 2026-10-21 | Start authorized M3 browser implementation; pin Playwright 1.64.1 / Chromium 1248 in ignored `.cache/ms-playwright` | A11/E05/T03/T09–T11; fresh compiled API and owned test database per browser case preserve real rate limits without changing production configuration. Node 24.22.0/npm 12.2.0 installed through nvm as requested; no API/schema contract change | Implemented and verified locally; see M3 result |
+
+| 2026-10-21 | Close M3 browser journey; expose `test:e2e` and the combined `check` command | T03/T09/T10 pass, initial T11 review recorded. Typed transport, credential-safe query coordination, forms and routes, recovery, and compiled browser journeys; API/schema/security contracts unchanged. Full T11 and quality/CI/release gates remain M4–M6 | Verified locally; stop after M3 |
 
 Future entries should include the decision changed, rationale, affected requirement/check IDs, and validation impact. Do not overwrite history to conceal a scope reduction.

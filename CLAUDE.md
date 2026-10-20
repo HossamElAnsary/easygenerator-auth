@@ -18,7 +18,7 @@ AGENTS.md, imported above, is the shared agent guide: goal, document ownership, 
 First-time setup needs Docker: `npm ci`, `cp .env.example .env`, `docker compose up -d`, `npm run db:ready`. The last step is idempotent; it initializes or verifies the single-node replica set `easy-generator-rs` on `127.0.0.1:27018`.
 
 - `npm run dev`: builds contracts and API, then watches contracts, the API (`127.0.0.1:3000`), and Vite (`127.0.0.1:5173`, proxying `/api`). It is long-running, so start it in the background.
-- `npm run check:foundation`: the complete gate today (lint, format check, typecheck, all tests, build). Run it before claiming work is done. The planned `npm run check` and `npm run test:e2e` take over once they exist.
+- `npm run check`: the complete local executable gate (lint/format, strict typecheck, workspace tests, builds, real browser suite). Install Chromium first with `PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npx playwright install chromium`. Stop any dev/preview process on port 3000; browser cases own that port and isolated databases. `npm run test:e2e` builds and runs only browser cases; `check:foundation` excludes browsers. CI/release gates remain separate.
 - `npm run lint`: ESLint plus `prettier --check .`, which also fails on unformatted Markdown; `npm run format` fixes it. The planning documents (`AGENTS.md`, `PLAN.md`, `AI.md`, `docs/plan/`) are deliberately Prettier-ignored, so preserve their layout by hand.
 - `npm run typecheck`, `npm test`, `npm run build`: each builds `@easy-generator/contracts` first.
 - `npm run build && npm run preview`: the compiled stack on `http://localhost:3000`, in development mode over loopback HTTP.
@@ -54,6 +54,8 @@ npm test -w @easy-generator/contracts -- -t 'rejects'
 
 ### Web (`apps/web`: React 19, Vite)
 
-- `src/main.tsx` creates the single `QueryClient` and the `BrowserRouter`. Requests use relative `/api` URLs with `credentials: 'same-origin'` and an abort/timeout signal, then decode the response with the shared schema (`src/health.ts`).
+- `src/main.tsx` creates the single `QueryClient` and the `BrowserRouter`. Requests use relative `/api` URLs with `credentials: 'same-origin'` and an abort/timeout signal, then decode the response with the shared schema (`src/api/client.ts`).
 - Tests sit under `src/` and run in jsdom. They render with a fresh `QueryClient` (`retry: false`, `gcTime: 0`) and, for routed components, a `MemoryRouter`. They stub `fetch` with `vi.stubGlobal`, which the config restores after each test.
 - The UI is English-only, with no i18n layer. User-facing copy is specified word for word in [Experience](docs/plan/experience.md) and Architecture, including R04's exact `Welcome to the application.` Adding locales or RTL is a scope change to record in Delivery first.
+
+- The auth coordinator in `src/auth/AuthProvider.tsx` sequences credential actions and the credential-free logout mutation. `src/auth/session.ts` owns session query options and scope cleanup. Keep public forms mounted during background checks and never infer authentication from cached data while verification is pending/unavailable.

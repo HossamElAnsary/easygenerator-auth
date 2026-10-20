@@ -1,6 +1,6 @@
 # Easy Generator authentication task
 
-Implementation currently covers **M1 — Foundation** and **M2 — Authentication API** of [baseline v1.2](PLAN.md): a React/TypeScript workspace; a NestJS API with signup, signin, a protected session check, and logout; shared Zod contracts; and MongoDB persistence for users and sessions. The browser screens and the required welcome page are scheduled for M3 and are not implemented yet, so the API is exercised directly for now (see [Authentication API](#authentication-api)). See [Delivery](docs/plan/delivery.md) and [Verification](docs/plan/verification.md) for actual progress and evidence.
+Implementation covers **M1 — Foundation**, **M2 — Authentication API**, and **M3 — Browser journey** of [baseline v1.2](PLAN.md). Visitors can create an account, sign in, see exactly `Welcome to the application.`, restore their session on refresh, and sign out. The React/TypeScript UI uses the NestJS API and MongoDB-backed HttpOnly sessions. See [Delivery](docs/plan/delivery.md) and [Verification](docs/plan/verification.md) for local evidence and remaining gates. CI, final quality/release review, and publication remain future milestones.
 
 ## Prerequisites and versions
 
@@ -26,7 +26,7 @@ npm run db:ready
 npm run dev
 ```
 
-Open `http://localhost:5173`. The minimal foundation page calls `/api/health` through Vite's proxy and shows readiness only; the authentication screens arrive in M3. The API listens on loopback port 3000, behind the same proxy, and logs one JSON line per API request (request ID, method, route template, status, duration, error code). The development command builds shared contracts and the API first, then watches contracts/API/web. Stop it with Ctrl-C. `docker compose stop` stops MongoDB while retaining the project volume.
+Open **`http://localhost:5173`** (exactly this host, not `127.0.0.1`). The home route resolves the session and redirects to signin or the application; signup is linked from signin. Vite proxies relative `/api` requests without changing the browser Origin. The API listens on loopback port 3000, behind the same proxy, and logs one JSON line per API request (request ID, method, route template, status, duration, error code). The development command builds shared contracts and the API first, then watches contracts/API/web. Stop it with Ctrl-C. `docker compose stop` stops MongoDB while retaining the project volume.
 
 The example database is local and unauthenticated, published on loopback only. It has one replica-set member and provides no redundancy. This is not a public database deployment. Do not reuse its configuration for production. The readiness initializer is restricted to this project's local/test setup; it never reconfigures an existing set. Keep the same advertised host/port when using the provided Compose configuration so the host application can discover the primary.
 
@@ -44,11 +44,26 @@ The example database is local and unauthenticated, published on loopback only. I
 | `npm run build`            | Build contracts, API, then web                                                                         |
 | `npm run preview`          | Run the compiled stack locally on `http://localhost:3000`                                              |
 | `npm run start:prod`       | Run compiled assets with validated production configuration                                            |
-| `npm run check:foundation` | Run every check available today: lint, typecheck, tests, build                                         |
+| `npm run test:e2e`         | Build and run the isolated real Chromium suite                                                         |
+| `npm run check`            | Complete local executable gate, including browser tests and builds                                     |
+| `npm run check:foundation` | Run lint, typecheck, workspace tests, and build (excludes browsers)                                    |
 
-The full `check` command and `test:e2e` are deferred until the real browser journeys exist (M3/M4). CI is M4. Passing these checks is not a browser-journey or release pass.
+`npm run test:e2e` builds the compiled stack, then runs pinned Playwright **1.64.1** with Chromium. `npm run check` runs lint/format, strict typecheck (including browser tests), workspace tests, and `test:e2e` (including builds). CI and the final quality/release gate remain M4/M5.
 
-Tests require the running replica set and `MONGODB_TEST_URI` from `.env.example`; missing database prerequisites fail the suite instead of silently skipping integration checks. The marker database must be named `easy_generator_test` and differ from the application database. Each test application creates `easy_generator_test_<random UUID>` and can drop only that exact owned database. API tests drive the real Nest HTTP pipeline and MongoDB; driver faults are injected only to test failure paths, using the driver's own error types. Web tests use jsdom and mocked HTTP. No real-browser journey exists before M3.
+Install the pinned browser once after `npm ci`, from the repository root:
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npx playwright install chromium
+npm run test:e2e
+# Complete local executable gate:
+npm run check
+```
+
+The download stays in ignored `.cache/ms-playwright` (Chromium revision 1248 for Playwright 1.64.1 on this workstation), not a temporary tool directory. On Linux, install Playwright's required OS libraries using its `install --with-deps chromium` option when needed.
+
+Stop the development/preview server before browser tests: the suite owns loopback port **3000** and refuses to reuse another process. Each case starts the compiled real API and serves the compiled UI at **`http://localhost:3000`** in test mode, with that exact `APP_ORIGIN`, its own generated test database, and fresh production rate-limit counters. One worker runs the cases sequentially; retries are disabled. A dedicated case exercises the real signup limit and `Retry-After`. No rate-limit override, forwarding-header spoofing, or development-database cleanup is used. Normal teardown closes the owned server and drops only the case's owned database. A forcibly killed process may leave its generated test database; never broadly delete application data to clean up tests. Screenshots and failure reports stay under ignored `test-results/`.
+
+Tests require the running replica set and `MONGODB_TEST_URI` from `.env.example`; missing database prerequisites fail the suite instead of silently skipping integration checks. The marker database must be named `easy_generator_test` and differ from the application database. Each test application creates `easy_generator_test_<random UUID>` and can drop only that exact owned database. API tests drive the real Nest HTTP pipeline and MongoDB; driver faults are injected only to test failure paths, using the driver's own error types. Web tests use jsdom and mocked HTTP. Browser tests in `tests/e2e` run the real compiled API/SPA; route interception is limited to deliberate outage/race cases. They reuse the validated isolated-database helper. The e2e fixture imports compiled Nest code because Playwright's TypeScript transform does not emit Nest DI metadata.
 
 To run one test file or a subset by name, pass Vitest arguments after `--`, for example `npm test -w @easy-generator/api -- test/signin.integration.test.ts -t 'fresh token'`. Workspace-level runs skip the contracts build, so run `npm run build -w @easy-generator/contracts` first after changing `packages/contracts`.
 
@@ -107,10 +122,12 @@ Startup validates configuration and required assets, connects to a writable repl
 
 ## Structure and next work
 
-- `apps/web`: minimal React readiness screen and library integration smoke tests.
+- `apps/web`: typed fetch client, stable session QueryClient, auth coordinator, route guards, shared accessible fields, signup/signin/welcome pages, CSS Modules, rendering error boundary, and focused state/race tests.
 - `apps/api`: Nest modules for auth (controller, service, Argon2 hasher, session guard and cookie), users, and sessions; the HTTP pipeline (request IDs, mutation controls, security headers, rate limits, safe errors, logs); configuration and database startup; integration tests in `apps/api/test`.
 - `packages/contracts`: browser/server-neutral strict Zod schemas for health, signup/signin/logout requests, public users, and error codes.
 - `docs/plan`: owned contracts, milestone state, and acceptance evidence.
 - `AI.md`: actual assistance and corrections.
 
-M3 adds the browser authentication journey on top of this API: the typed client, session query and coordinator, signup/signin/welcome screens, and real-browser tests. Read [AGENTS.md](AGENTS.md) before changing the baseline.
+The next milestone is **M4 — Quality and CI**. M3 includes an initial keyboard/responsive review, with native browser zoom and actual password-manager behavior still to review. No deployed HTTPS validation or public submission is claimed.
+
+Frontend state follows Architecture A11: React Hook Form owns local fields; shared Zod resolvers normalize inputs; Query caches only the public user or null on a confirmed 401. Other session failures mean unavailable and hide protected content. Focus/reconnect/navigation checks preserve mounted public forms. Signup/signin are awaited coordinator actions, keeping passwords out of query/mutation caches; credential-free logout uses a mutation. Requests time out after 15 seconds and never automatically retry POSTs. An aborted request may still have completed on the server; use manual recovery. Session checks never modify cookies. A rendering failure offers Reload page. Read [AGENTS.md](AGENTS.md) before changing the baseline.
