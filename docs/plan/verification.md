@@ -2,7 +2,7 @@
 
 Return to [PLAN.md](../../PLAN.md). Requirements are defined in [Requirements](requirements.md); precise behavior is in [Architecture](architecture.md) and [Experience](experience.md).
 
-**Current evidence state: M1 foundation verified locally on 2026-10-20.** T01 passes; the assigned M1 setup portion of T12 passes while T12 remains Pending overall. Authentication, user/session persistence, browser journeys, CI, release preparation, and submission are not implemented or verified. Acceptance criteria below remain unchanged; actual evidence is recorded separately.
+**Current evidence state: M1 foundation and M2 authentication API verified locally on 2026-10-20.** T01, T02, and T04–T08 pass. T03's schema and API portions pass, but T03 stays Pending until browser parity (M3). T12 and T16 have recorded M1/M2 portions and remain Pending overall. Browser journeys, CI, release preparation, and submission are not implemented or verified. The acceptance criteria below remain unchanged; actual evidence is recorded separately.
 
 ## Test strategy
 
@@ -92,21 +92,21 @@ For each entry record the date, revision (or local snapshot), command/manual ste
 | Check | Status | Evidence / next action |
 | --- | --- | --- |
 | T01 | Pass | 2026-10-20 M1 revision `7a16842`: pinned Node 24.22.0/npm 12.2.0; locked `npm ci --no-audit --no-fund`; `npm ls --depth=0`; `npm run check:foundation` passed strict typecheck, lint/format, 41 tests, shared ESM imports, and contracts/API/web builds. Real React, Nest 12, Mongoose/Mongo integration; details below |
-| T02 | Pending | Implement signup persistence |
-| T03 | Pending | Implement shared validation and server enforcement |
-| T04 | Pending | Implement/verify unique index and race handling |
-| T05 | Pending | Implement signin |
-| T06 | Pending | Implement session lifecycle and protected endpoint |
-| T07 | Pending | Implement request/security controls |
-| T08 | Pending | Implement safe errors/logging and failure fixtures |
+| T02 | Pass | 2026-10-20 `e1dde67`: signup returns 201 with exactly the public user; one stored account with the normalized email, trimmed name, and only the documented fields; an Argon2id hash with m=19456, t=2, p=1 that verifies only the exact password; no cookie and no session. Signin succeeds afterward (signin and failure suites). Details below |
+| T03 | Pending | Schema and API portions pass (`98ad6af`, `e1dde67`): 67 shared-schema boundary tests cover normalization, Unicode code-point bounds with astral characters, exact password preservation, distinct signin rules, strict structure, and unpaired surrogates. The server independently rejects field errors, operator-shaped values, unexpected and prototype-shaped keys, non-object bodies, malformed or deeply nested JSON, non-JSON or compressed bodies, and bodies over 16 KiB, storing nothing; signin compares the exact password. Browser parity remains for M3 |
+| T04 | Pass | 2026-10-20 `e1dde67`: an equivalent email (case and whitespace variants) returns 409 and keeps one account. Five concurrent equivalent signups produce exactly one 201 and four 409 with one stored user. Startup creates and verifies the exact unique and TTL index definitions, and a conflicting existing index stops startup without being replaced |
+| T05 | Pass | 2026-10-20 `e1dde67`: correct credentials return 200 with the public user and a fresh canonical 43-character token in an HttpOnly, SameSite=Lax, Path=/ cookie expiring with the stored 24-hour session; only the SHA-256 verifier is stored. An unknown email, a wrong password, and a short nonempty password share an identical 401 body with no cookie or session; unknown emails spend a dummy verification; empty or malformed input returns 400 |
+| T06 | Pass | 2026-10-20 `e1dde67`: `/auth/me` returns only the session owner (two users), ignores client-supplied IDs, and never sets cookies. Default-required authentication is proven with a test-only private handler, and every public exception stays reachable. Missing, malformed, and unknown tokens get 401, and malformed ones cause no database lookup. A deleted user gets 401. Expiry is exact at 24 hours under a frozen clock while the document still exists (before TTL), and a session survives an API restart. Logout revokes only the presented session, expires the cookie, rejects replay, and is idempotent |
+| T07 | Pass | 2026-10-20 `e1dde67`. Missing, foreign, `null`, or trailing-slash origins, a missing or wrong custom header, text, form, `+json`, missing, or compressed content all get 403 or 415 before any handler runs, with no state change; this also covers PUT, PATCH, and DELETE and runs before body parsing. Local and production security headers are checked, as are the production `__Host-session` Secure cookie and its deletion. Rate limits of 120/5/10/30 per route and IP return 429 with `Retry-After`; spoofed forwarding headers are ignored without proxy trust, and throttling precedes the session lookup. The compiled `start:prod` configuration was checked over loopback, not a deployed HTTPS environment |
+| T08 | Pass | 2026-10-20 `e1dde67`. The fixed-message error shape covers field validation, generic invalid bodies (including deep nesting), JSON 404s without path echo, 409, 413, 415, and 429. Injected write-concern losses and unapplied network failures give the documented signup, signin, and logout outcomes, including retry reconciliation and a zero-match delete with the session still present (503). Server-selection timeouts and server codes 50 and 10107 on reads give 503, as do signup, signin, `/auth/me`, and logout on a closed connection, with health 503. Unexpected errors give a safe 500 and log only the error type. Full-flow log capture contains no email, password, hash, token, verifier, database name, or URI |
 | T09 | Pending | Implement browser journey |
 | T10 | Pending | Implement and verify UI states/race handling |
 | T11 | Pending | Review implemented UI |
-| T12 | Pending | M1 setup portion passed: first initialization and repeated setup, discovery/primary/concern compatibility, readiness/outage, config/index gate failure, compiled preview/routes/API 404s. Auth/session persistence, final production controls, and M5 clean-checkout README walkthrough remain unrun |
+| T12 | Pending | M1 setup portion passed. M2 portion passed: a session persists across an API process restart, the startup index gate creates and verifies the real indexes, the compiled preview passes the auth journey with direct routes, assets, and API 404s, and the compiled production configuration was checked over loopback. The final production-controls review (M4) and the M5 clean-checkout README walkthrough remain unrun |
 | T13 | Pending | Implement workflow; observe remote result when available |
-| T14 | Pending | M1 README and actual AI record updated; final auth/API documentation and clean-checkout walkthrough still required |
+| T14 | Pending | README documents the authentication API, required headers, cookie, errors, and rate limits, with a curl cookie-jar example verified verbatim under zsh and bash; AI.md records M2. The final M5 documentation review and clean-checkout walkthrough remain |
 | T15 | Pending | Perform authorized public submission/handoff |
-| T16 | Pending | Initial M1 source/config review and ignore checks completed; final authentication/security/responsibility and release-artifact review remain required |
+| T16 | Pending | M1 review completed. M2: an independent read-only review found two defects, both fixed with regression tests; E02–E04 responsibilities, dependency direction, and public projections were checked; 19 production-code mutations were all caught. The final security, responsibility, and release-artifact review (M4/M5) remains |
 
 ## M1 local evidence — 2026-10-20
 
@@ -136,6 +136,42 @@ Documentation-only follow-up: checked Git status/history, repository remotes, av
 Documentation validation: `git diff --check` and local Markdown-link checks for the three changed files passed.
 
 The next evidence increment is M2's shared auth-schema boundary coverage under T03. A passing schema suite alone must not mark T03 Pass: direct API validation and matching browser behavior remain necessary. T12 likewise stays Pending until its remaining persistence, production-control, and clean-checkout criteria are demonstrated.
+
+## M2 local evidence — 2026-10-20
+
+Verified revisions on local `main`: `98ad6af` (shared auth contracts) and `e1dde67` (authentication API). Node 24.22.0/npm 12.2.0 came from a temporary tool directory; host globals were unchanged. The database was the Compose replica set `easy-generator-rs` (Mongo 8.0.32, single node, loopback port 27018). Every API test application used its own generated `easy_generator_test_<UUID>` database. Single-node results are concern-compatibility and application evidence; no failover, redundancy, or backup is exercised. No remote revision or CI run exists.
+
+| Portion | Actual command / method | Result |
+| --- | --- | --- |
+| Complete available gate | `npm run check:foundation` | Pass: lint/format, strict typecheck of all workspaces and tests, 205 tests (73 contracts, 128 API in 13 files, 4 web), and the ordered builds |
+| Shared schemas (T03) | `packages/contracts/src/auth.test.ts`, `errors.test.ts` | Pass: 67 boundary cases. The RED placeholder failed 42 of them before the policy existed |
+| HTTP pipeline (T07/T08) | `test/http-pipeline.integration.test.ts` with a test-only probe handler | Pass. Covers server request IDs, `no-store`, JSON 404s, origin/header/content-type controls before the handler or body parsing (including PUT/PATCH/DELETE), 413 at 16 KiB + 1 byte, compressed bodies 415, generic 400s for malformed, null, string, or deeply nested JSON, local security headers, case-insensitive `/api`, and one safe log record per request |
+| Signup (T02/T03/T04) | `test/signup.integration.test.ts` | Pass. Covers the stored normalized account and Argon2id hash, no session, field errors from the server, rejected operator-shaped values and extra or prototype-shaped keys with nothing stored, controls on the real route, 409 for equivalent emails, five concurrent equivalent signups giving one 201 and four 409, and the limit of 5 |
+| Signin (T05) | `test/signin.integration.test.ts` | Pass. Covers cookie attributes and lifetime, the SHA-256 verifier with no raw token stored, identical 401s for unknown email, wrong password, and short password, the dummy verification, exact password comparison, fresh tokens, controls, and the limit of 10 |
+| Session check and authorization (T06) | `test/session-check.integration.test.ts` | Pass. Covers owner-only `/auth/me`, ignored client identity claims, no cookies on 200 or 401, malformed and unknown tokens with lookups only for canonical ones (profiler), a deleted user, the test-only private handler requiring a session, public exceptions, throttling before lookup, the exact 24-hour boundary before TTL, and an API restart |
+| Logout (T06/B01) | `test/logout.integration.test.ts` | Pass. Covers revocation of the presented session only, the matching expired cookie, replay rejection, idempotence, rejected bodies or controls leaving the session valid, and the limit of 30 |
+| Rate limits (T07) | `test/rate-limits.integration.test.ts` and the route-limit cases above | Pass. 120 per route and client with independent counters; spoofed `X-Forwarded-For` values do not open buckets without proxy trust; 429 carries `Retry-After` of 60 seconds or less |
+| Indexes (T04/T12) | `test/startup-indexes.integration.test.ts` | Pass. Exact `email_1` unique, `tokenHash_1` unique, and `expiresAt_1` TTL 0; unrelated indexes are kept; a conflicting `email_1` stops startup and is left untouched |
+| Concern policy (A10) | `test/database-concerns.integration.test.ts` with MongoDB's profiler | Pass. User and session inserts carry `{ w: 'majority', j: true, wtimeout: 5000 }`; user reads carry majority read concern; the session lookup carries `linearizable` with `maxTimeMS: 5000`. The profiler does not record a delete's write concern, which inherits the client defaults verified in M1 |
+| Failure semantics (T08) | `test/failures.integration.test.ts` | Pass. Covers driver-type fault injection for applied-but-unacknowledged and unapplied writes, read outages (server selection, codes 50 and 10107), a zero-match delete with the session present, a real closed connection, the unexpected-error 500, and full-flow log and response hygiene |
+| Production configuration (T07/T12) | `test/production-config.integration.test.ts` with a stub web directory; compiled `APP_ORIGIN=https://app.example.test npm run start:prod` over loopback | Pass. Covers the `__Host-session` cookie with Secure, HttpOnly, SameSite=Lax, and Path=/ and no Domain, its deletion, the development cookie name ignored, HSTS, CSP with `script-src 'self'` and `upgrade-insecure-requests`, the SPA shell served only for browser routes (any `/api` casing stays JSON), and foreign origins 403. Not a deployed HTTPS check |
+| Live development and preview | `npm run dev` through Vite, and compiled `npm run preview`, with curl and a cookie jar | Pass. The full signup → signin → me → logout → replay-401 journey on both, structured logs with matching request IDs and no secrets, and preview direct routes, assets, and API 404s |
+| README example (T14) | API example block extracted from README.md and run under zsh and bash | Pass. A first run gives the full journey; a repeat run gets the documented 409 and continues |
+| Mutation check | Scratchpad runner applying 19 single-line production mutations and restoring each file | Pass. All caught. The first run's only survivor (an expiry boundary of `<` instead of `<=`) was fixed with a frozen test clock and an exact-boundary assertion |
+| Independent review (T16 portion) | Read-only reviewer with its own probes in separate databases | Two defects found: prototype-shaped keys stripped before strict validation, with deep nesting returning 500; and case-sensitive `/api` checks. Both fixed test-first. The test gaps it named were closed and re-verified by mutation |
+| Hashing cost (A06) | 20 hashes and 20 verifications at m=19456, t=2, p=1 | Median 13.1 ms each on an Apple M4 Pro; the documented parameters were kept |
+| Data hygiene | `listDatabases` after the runs; exact-email cleanup of live-check accounts in the development database | Pass: no `easy_generator_test_*` database remained, and the development database was returned to 0 users and 0 sessions |
+
+Earlier attempts that were corrected and rerun, not counted as passes:
+
+- an assumed Argon2 parameter order in a test;
+- an assumed token final-character set;
+- health returning 500 under the new catch-all filter;
+- a `.exec()` coupling that broke fault injection;
+- the expiry-boundary mutation survivor;
+- the two review defects.
+
+No security audit, real-browser journey, deployed HTTPS, multi-node failover, remote CI, or recruiter handoff was performed.
 
 ## Release gates
 

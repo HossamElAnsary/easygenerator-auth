@@ -20,7 +20,7 @@ Statuses: **Planned**, **In progress**, **Verified**, **Blocked**. Blocked entri
 | --- | --- | --- | --- |
 | M0 — Planning | Brief and preferences | Scope, contracts, UX, delivery, acceptance, and AI record are consistent and reviewable | Verified: documentation only |
 | M1 — Foundation | M0; instruction to implement | Workspace, pinned tools, Mongo, startup config, shared contracts, and minimal web/API compile/run/test smoke | Verified: T01 and M1 setup portion of T12; full T12 remains Pending |
-| M2 — Authentication API | M1 | User/session persistence, hashing, signup/signin/me/logout, request controls, and direct API tests pass | Planned |
+| M2 — Authentication API | M1 | User/session persistence, hashing, signup/signin/me/logout, request controls, and direct API tests pass | Verified: T02 and T04–T08; T03 schema/API portions (browser parity Pending M3); M2 portions of T12 and T16 |
 | M3 — Browser journey | M2 contract; UI shell may start after M1 | Three pages, session states, errors, and complete browser journey work | Planned |
 | M4 — Quality gate | M2, M3 | Meaningful integration/browser checks, responsive/accessibility review, safe logs, production build review, and CI are complete | Planned |
 | M5 — Submission ready | M4 | Fresh-checkout README walkthrough, accurate AI record, evidence review, and publication-ready tracked files | Planned |
@@ -28,15 +28,28 @@ Statuses: **Planned**, **In progress**, **Verified**, **Blocked**. Blocked entri
 
 The dependency path is M1 → M2 → M3 integration → M4 → M5 → M6. After M1, the UI shell and backend work can run in parallel against the frozen contracts; shared-contract edits must be coordinated. Do not parallelize competing edits to the same contract or use a UI mock as proof that the backend works.
 
-## Current handoff — 2026-10-20
+## Current handoff — 2026-10-20 (after M2)
 
-- **Completed:** M0 and M1. Implementation/evidence revision is `7a16842` on local `main`; the workspace was clean before this documentation update. Pinned workspaces, shared health contract, React/Nest health foundation, validated config, Mongo replica-set startup/readiness, build/watch/preview scripts, and isolated tests are implemented. The last complete foundation gate passed 41 tests, lint/format, typecheck, and builds.
-- **Unfinished:** M2–M6 remain Planned. Shared contracts currently contain only the health schema. The startup index hook is intentionally empty; user/session models, indexes, auth endpoints/guards/request controls, auth screens, browser journeys, CI, final release documentation, and submission remain to be implemented. T01 passes; T02–T16 remain Pending, including the unfinished portions of T12.
-- **Decisions to retain:** baseline v1.2, React/TypeScript with RHF/Zod/Query, opaque Mongo-backed cookie sessions without JWT/refresh tokens/RBAC, and the documented read/write concerns. M1 pins Node 24.22.0/npm 12.2.0, Nest 12.2.0, TypeScript 6.0.3 for lint compatibility, and Mongo 8.0.32 by digest. The project uses loopback Mongo port 27018 to preserve the pre-existing service on 27017.
-- **Blockers and resume prerequisites:** no known M1 blocker. Select the pinned Node/npm before running commands; the previous run used temporary tools rather than changing host globals. Recheck Docker readiness with the README setup when resuming; this documentation-only handoff does not recheck live processes. No Git remote is configured. Repository/recruiter destination details are deferred M6 inputs, not blockers for local M2.
-- **Next concrete task:** M2 task 1: extend `packages/contracts/src` with strict signup/signin/logout input schemas, normalized input/output types, public user/response types, and A05 error codes. Follow Architecture A04/A05 and Verification T03: Unicode code-point bounds, exact password preservation, email/name normalization, distinct signin password rules, and rejection of malformed/extra properties. Add focused boundary tests, run the contracts tests and workspace typecheck, then record the schema-only evidence while leaving T03 Pending for server enforcement and browser parity. User/session persistence and indexes follow as M2 task 2.
+- **Completed:** M0, M1, and M2. Shared auth contracts are revision `98ad6af` and the authentication API `e1dde67`, both on local `main`; M1 remains `7a16842`. The API implements signup, signin, the protected `GET /api/auth/me`, and logout, with Mongo-backed sessions, request controls, rate limits, one safe error shape, and fixed-field request logs. The last complete gate (`npm run check:foundation`) passed 205 tests plus lint/format, strict typecheck, and ordered builds.
+- **Unfinished:** M3–M6 remain Planned. The web app is still the M1 readiness page: there is no typed API client, session query or coordinator, signup/signin/welcome screen, or browser test. T01, T02, and T04–T08 pass. T03 (browser parity) and T09–T16 remain Pending, including the unfinished portions of T12, T14, and T16.
+- **Decisions to retain:** everything above, plus the M2 clarifications in the change log:
+  - unpaired surrogates are rejected;
+  - non-field validation failures get a generic message;
+  - unknown API routes return `NOT_FOUND`;
+  - request controls cover every non-GET/HEAD/OPTIONS `/api` request, before body parsing;
+  - compressed bodies get `415`;
+  - local HTTP modes drop HSTS and `upgrade-insecure-requests`.
 
-This handoff updates documentation only; it does not start M2 or rerun the recorded application checks.
+  The cookie is `session` locally and `__Host-session` in production. Authentication is required by default, and handlers opt out with the method-level `@Public()`. Rate limits are 5/10/30/120 per minute per route and client.
+- **Blockers and resume prerequisites:** none known. Select the pinned Node/npm first; the M2 run used a temporary tool directory again, and `nvm install` from the repository root is the permanent option. Recheck Docker and `npm run db:ready` with the README when resuming. No Git remote is configured. Repository and recruiter details are deferred M6 inputs, not blockers for M3.
+- **Next concrete task:** M3 task 1, a typed API client in `apps/web` built on the actual contract:
+  - relative `/api` URLs with `credentials: 'same-origin'`;
+  - `X-CSRF-Protection: 1` and a JSON content type on every POST, with the browser supplying `Origin`;
+  - a 15-second timeout combined with TanStack Query's `AbortSignal`;
+  - responses decoded with `userResponseSchema` and `apiErrorResponseSchema` from `@easy-generator/contracts`;
+  - typed errors that separate field validation, `INVALID_CREDENTIALS`, `UNAUTHENTICATED`, `RATE_LIMITED` with `Retry-After`, and network/5xx unavailability.
+
+  The stable `QueryClient`, the `['auth', 'me']` session query, and the coordinator follow as M3 task 2 (Architecture A11).
 
 ## M1 — Foundation tasks
 
@@ -81,6 +94,49 @@ No M1 blocker remains. The local Mongo volume is retained; development/preview p
 10. Complete T02–T08's applicable API/schema evidence, including malformed inputs, CSRF failures, expiry before TTL cleanup, unknown API paths, and safe dependency errors. Add security and tests with each endpoint, not only after all endpoints exist.
 
 Exit evidence: T02 and T04–T08 pass; T03's schema/API portions pass, with browser parity pending M3. Browser behavior is not a substitute for API authorization/validation evidence.
+
+### M2 result — 2026-10-20
+
+Shared contracts are revision `98ad6af` and the authentication API `e1dde67`, on local `main`. The tasks were completed in the documented order, test-first per slice: shared schemas; persistence and the index gate; the HTTP pipeline and throttling; signup; sessions, signin, the guard, `/auth/me`, and logout; failure semantics; production configuration. Contract gaps found before dependent code were recorded first (see the change log).
+
+An independent review then found two defects, both fixed with regression tests before the commit:
+
+- Nest's built-in schema pipe recursively deletes `__proto__`, `constructor`, and `prototype` keys before validating. The strict schemas therefore accepted those keys, and a deeply nested body under 16 KiB overflowed the stack and returned 500.
+- The `/api` checks were case-sensitive, while Express routing is not. A differently cased API path skipped `no-store` and logging, and with `SERVE_WEB` it received the SPA shell.
+
+The review's test gaps were also closed: server-selection and server-code outages, the token-shape gate before lookup, and the controls for non-POST methods. An unreachable `acknowledged: false` branch was removed; the authoritative absence check already covers it.
+
+Actual verification, on Node 24.22.0/npm 12.2.0 from a temporary tool directory with the Compose replica set `easy-generator-rs` (Mongo 8.0.32):
+
+- `npm run check:foundation` passed lint/format, strict typecheck, 205 tests (73 contracts, 128 API, 4 web), and the ordered builds.
+- 19 deliberate production-code mutations were each caught by at least one failing test. The first run's only survivor (`<` versus `<=` at the expiry boundary) led to a frozen test clock and an exact-boundary test.
+- A live `npm run dev` journey through the Vite proxy:
+  - signup 201, duplicate signup 409, wrong password 401, cross-origin signin 403;
+  - signin 200 with an HttpOnly, SameSite=Lax `session` cookie;
+  - `/auth/me` 200, then logout 204 with the cookie expired;
+  - the revoked token 401, and an unknown API route the JSON 404.
+
+  The request logs were single JSON lines whose request IDs matched the responses, with no email, password, or connection string.
+- The compiled `npm run preview` repeated the journey. Direct SPA routes served the built HTML with `no-cache`, under the local-mode CSP.
+- The compiled `npm run start:prod`, with `APP_ORIGIN=https://app.example.test` over loopback HTTP:
+  - issued `__Host-session` with Secure, HttpOnly, SameSite=Lax, and Path=/, and no Domain;
+  - sent HSTS, and a CSP with `script-src 'self'` and `upgrade-insecure-requests`;
+  - ignored the development cookie name and rejected a non-matching origin.
+
+  This is not a deployed HTTPS check.
+- The README curl example ran verbatim under zsh and bash.
+- Argon2id at the documented parameters measured a median 13.1 ms per hash and per verification over 20 runs.
+- Accounts created by these live checks in the local development database were removed by exact email afterwards. No `easy_generator_test_*` database remained.
+
+Issues resolved along the way:
+
+- argon2 0.45's PHC parameter order: the test now parses the parameters.
+- The token final-character set was measured at 16 characters; the initial assumption was wrong.
+- Health's thrown 503 would have become a 500 under the catch-all filter, so the controller now sets the status.
+- Fault injection needed Mongoose queries to be awaited rather than `.exec()`'d.
+- The two review defects above.
+
+No M2 blocker remains. Linearizable session reads cost about 0.1 s per authenticated request on the local set, the latency trade-off A10 accepts. The in-flight boundary is asserted as "a check begun after confirmed revocation rejects the token". By design, logout does not cancel work authorized earlier. M3 is next. No browser journey, CI, publication, or submission is included in M2.
 
 ## M3 — Browser tasks
 
@@ -171,5 +227,6 @@ Planning estimate revised with the explicit database setup: M1 45–75 minutes; 
 | 2026-10-20 | Record the M1 → M2 handoff and bind evidence to `7a16842` | User requested updated progress/evidence and a concise continuation point; no scope or runtime changes | Documentation only; M2 remains Planned |
 | 2026-10-20 | Added root CLAUDE.md for Claude Code: imports AGENTS.md, then records verified commands, single-test invocations, and code-level conventions | User's Claude Code /init request. By default Claude Code loads AGENTS.md only when a project has no CLAUDE.md, so the import keeps one shared guide. Product scope, contracts, and checks unchanged | Documentation only |
 | 2026-10-20 | Start authorized M2; clarify contract gaps before dependent code: reject unpaired UTF-16 surrogates in string inputs; ordered/aborting field checks; generic validation message without `fields` for non-field issues; `404 NOT_FOUND` for unknown API routes; request controls scoped to non-GET/HEAD/OPTIONS `/api` requests and run before parsing; compressed bodies `415`; Helmet defaults in production with HSTS/`upgrade-insecure-requests` disabled only for local HTTP modes | Found while mapping A04/A05/A07 onto the pinned Zod, Nest, and Express behavior. Lone surrogates would otherwise be silently replaced during UTF-8 hashing/storage (exact preservation, T03); Nest's default 404 echoes the request path (T08); Helmet's HTTPS-only directives would break the documented loopback preview (T07/T12). No product scope, route, credential, cookie, or concern-policy change | Clarified in Architecture A04/A05/A07 before implementation |
+| 2026-10-20 | Close M2 authentication API; adopt Helmet 8.3.0, cookie-parser 1.4.7, and `@nestjs/throttler` 6.7.1 | T02 and T04–T08 passed; T03 schema/API portions passed with browser parity Pending; M2 portions of T12/T16 recorded. Independent review fixes restored A04/A05/A02 compliance without contract changes: strict rejection of prototype-shaped keys and no recursive pre-validation stripping (deep-nesting 500), and case-insensitive `/api` handling consistent with Express routing. Implementation `e1dde67`; contracts `98ad6af` | Verified locally; next milestone M3 |
 
 Future entries should include the decision changed, rationale, affected requirement/check IDs, and validation impact. Do not overwrite history to conceal a scope reduction.
