@@ -1,9 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { SessionsService } from '../sessions/sessions.service.js';
+import { UsersService } from '../users/users.service.js';
 
+/**
+ * The startup index gate. DatabaseService awaits it after connecting and
+ * before readiness, so the application never serves without its indexes.
+ */
 @Injectable()
 export class StartupIndexes {
+  constructor(
+    @Inject(UsersService) private readonly users: UsersService,
+    @Inject(SessionsService) private readonly sessions: SessionsService,
+  ) {}
+
   async verify(): Promise<void> {
-    // M2 adds non-destructive user/session index creation and verification here.
-    // The startup gate already awaits this hook before accepting traffic.
+    await this.users.ensureIndexes();
+    await this.sessions.ensureIndexes();
   }
 }

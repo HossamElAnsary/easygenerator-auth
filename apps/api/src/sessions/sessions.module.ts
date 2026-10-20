@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { SESSION_MODEL, sessionSchema } from './session.schema.js';
+import { SessionsService } from './sessions.service.js';
+
+@Module({
+  imports: [
+    MongooseModule.forFeature([{ name: SESSION_MODEL, schema: sessionSchema }]),
+  ],
+  providers: [SessionsService],
+  exports: [SessionsService],
+})
+export class SessionsModule {}

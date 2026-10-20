@@ -2,11 +2,7 @@ import {
   healthResponseSchema,
   type HealthResponse,
 } from '@easy-generator/contracts';
-import {
-  Inject,
-  Injectable,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
 
 @Injectable()
@@ -16,11 +12,8 @@ export class HealthService {
   ) {}
 
   async check(): Promise<HealthResponse> {
-    if (!(await this.database.isReady())) {
-      throw new ServiceUnavailableException(
-        healthResponseSchema.parse({ status: 'unavailable' }),
-      );
-    }
-    return healthResponseSchema.parse({ status: 'ok' });
+    return healthResponseSchema.parse({
+      status: (await this.database.isReady()) ? 'ok' : 'unavailable',
+    });
   }
 }
