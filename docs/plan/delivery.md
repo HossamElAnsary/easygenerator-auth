@@ -28,6 +28,16 @@ Statuses: **Planned**, **In progress**, **Verified**, **Blocked**. Blocked entri
 
 The dependency path is M1 → M2 → M3 integration → M4 → M5 → M6. After M1, the UI shell and backend work can run in parallel against the frozen contracts; shared-contract edits must be coordinated. Do not parallelize competing edits to the same contract or use a UI mock as proof that the backend works.
 
+## Current handoff — 2026-10-20
+
+- **Completed:** M0 and M1. Implementation/evidence revision is `7a16842` on local `main`; the workspace was clean before this documentation update. Pinned workspaces, shared health contract, React/Nest health foundation, validated config, Mongo replica-set startup/readiness, build/watch/preview scripts, and isolated tests are implemented. The last complete foundation gate passed 41 tests, lint/format, typecheck, and builds.
+- **Unfinished:** M2–M6 remain Planned. Shared contracts currently contain only the health schema. The startup index hook is intentionally empty; user/session models, indexes, auth endpoints/guards/request controls, auth screens, browser journeys, CI, final release documentation, and submission remain to be implemented. T01 passes; T02–T16 remain Pending, including the unfinished portions of T12.
+- **Decisions to retain:** baseline v1.2, React/TypeScript with RHF/Zod/Query, opaque Mongo-backed cookie sessions without JWT/refresh tokens/RBAC, and the documented read/write concerns. M1 pins Node 24.22.0/npm 12.2.0, Nest 12.2.0, TypeScript 6.0.3 for lint compatibility, and Mongo 8.0.32 by digest. The project uses loopback Mongo port 27018 to preserve the pre-existing service on 27017.
+- **Blockers and resume prerequisites:** no known M1 blocker. Select the pinned Node/npm before running commands; the previous run used temporary tools rather than changing host globals. Recheck Docker readiness with the README setup when resuming; this documentation-only handoff does not recheck live processes. No Git remote is configured. Repository/recruiter destination details are deferred M6 inputs, not blockers for local M2.
+- **Next concrete task:** M2 task 1: extend `packages/contracts/src` with strict signup/signin/logout input schemas, normalized input/output types, public user/response types, and A05 error codes. Follow Architecture A04/A05 and Verification T03: Unicode code-point bounds, exact password preservation, email/name normalization, distinct signin password rules, and rejection of malformed/extra properties. Add focused boundary tests, run the contracts tests and workspace typecheck, then record the schema-only evidence while leaving T03 Pending for server enforcement and browser parity. User/session persistence and indexes follow as M2 task 2.
+
+This handoff updates documentation only; it does not start M2 or rerun the recorded application checks.
+
 ## M1 — Foundation tasks
 
 1. Inspect installed Node/npm, Docker or available MongoDB, Git, and current workspace state. Choose compatible stable package versions and a pinned MongoDB image; record them in runtime files, manifests, and README.
@@ -158,5 +168,6 @@ Planning estimate revised with the explicit database setup: M1 45–75 minutes; 
 | 2026-10-20 | Start authorized M1 against v1.2; resolve exact runtime/tool versions before scaffolding | Workspace confirmed planning-only, no Git; host Node 24.13.0/npm 11.6.2 below current generator floor. Select Node 24.22.0/npm 12.2.0 in runtime pins. Select TypeScript 6.0.3 because current typescript-eslint supports `<6.1`, excluding current TypeScript 7. No behavior/scope change; T01/T12 | Implementation in progress; Docker Desktop started; temporary tools leave global runtime unchanged |
 | 2026-10-20 | Resolve local MongoDB port to 27018 and pin Mongo 8.0.32 by digest | Port 27017 was occupied; preserve existing service. Use the same advertised container/host port for discovery. No standalone fallback, replica-set reconfiguration, or concern weakening; A08/A10, T12 | Local setup verified |
 | 2026-10-20 | Close M1 foundation only | T01 passed and T12 setup evidence recorded; authentication contracts/behavior, final release checks, remote CI and submission remain Pending | Verified locally; next milestone M2 |
+| 2026-10-20 | Record the M1 → M2 handoff and bind evidence to `7a16842` | User requested updated progress/evidence and a concise continuation point; no scope or runtime changes | Documentation only; M2 remains Planned |
 
 Future entries should include the decision changed, rationale, affected requirement/check IDs, and validation impact. Do not overwrite history to conceal a scope reduction.

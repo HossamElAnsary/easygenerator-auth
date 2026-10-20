@@ -91,7 +91,7 @@ For each entry record the date, revision (or local snapshot), command/manual ste
 
 | Check | Status | Evidence / next action |
 | --- | --- | --- |
-| T01 | Pass | 2026-10-20 local M1 snapshot: pinned Node 24.22.0/npm 12.2.0; locked `npm ci --no-audit --no-fund`; `npm ls --depth=0`; `npm run check:foundation` passed strict typecheck, lint/format, 41 tests, shared ESM imports, and contracts/API/web builds. Real React, Nest 12, Mongoose/Mongo integration; details below |
+| T01 | Pass | 2026-10-20 M1 revision `7a16842`: pinned Node 24.22.0/npm 12.2.0; locked `npm ci --no-audit --no-fund`; `npm ls --depth=0`; `npm run check:foundation` passed strict typecheck, lint/format, 41 tests, shared ESM imports, and contracts/API/web builds. Real React, Nest 12, Mongoose/Mongo integration; details below |
 | T02 | Pending | Implement signup persistence |
 | T03 | Pending | Implement shared validation and server enforcement |
 | T04 | Pending | Implement/verify unique index and race handling |
@@ -110,7 +110,7 @@ For each entry record the date, revision (or local snapshot), command/manual ste
 
 ## M1 local evidence — 2026-10-20
 
-Snapshot: the M1 foundation files committed with this record on local `main`. Platform: macOS arm64; Node 24.22.0/npm 12.2.0 selected from a temporary tool directory (host globals remain unchanged). Docker Desktop 28.0.1/Compose 2.33.1; MongoDB image `mongo:8.0.32@sha256:d0d926f94df099bff534b7ee5b5986458131a22489dfff8664509af0c1e2ca9c`. No remote revision or CI run exists.
+Verified implementation revision: `7a16842` (`chore: establish verified M1 foundation`) on local `main`. Platform: macOS arm64; Node 24.22.0/npm 12.2.0 selected from a temporary tool directory (host globals remain unchanged). Docker Desktop 28.0.1/Compose 2.33.1; MongoDB image `mongo:8.0.32@sha256:d0d926f94df099bff534b7ee5b5986458131a22489dfff8664509af0c1e2ca9c`. No remote revision or CI run exists.
 
 | Portion | Actual command / method | Result |
 | --- | --- | --- |
@@ -123,11 +123,19 @@ Snapshot: the M1 foundation files committed with this record on local `main`. Pl
 | Connection/read-write policy and startup hook | `apps/api/test/database.integration.test.ts` with a generated owned DB | Pass: 4 real DB tests; inherited primary/majority and majority+journal/write budget options inspected; actual insert/read/linearizable lookup/delete/absent lookup succeed; index-hook failure blocks readiness; closed connection yields safe health 503 |
 | Test isolation | `apps/api/test/test-database.ts`; inspect generated database names after suite | Test helper requires dedicated marker URI distinct from app DB, creates a UUID database, and permits cleanup only of that exact owned name. It never drops the configured application DB; setup failure does not count as a skipped pass |
 | Live development stack | `npm run dev`; HTTP requests through `http://localhost:5173`; watcher output | Pass: HTML 200, proxied health 200, unknown API JSON 404, contracts/API/web watchers active; rebuilt contracts triggered web update/API restart |
-| Live outage | Stop only project Mongo container, request proxied health, restart/setup, request health | Pass: `503 {\"status\":\"unavailable\"}` without infrastructure details; restart/setup restored `200 {\"status\":\"ok\"}`. The dev watcher also restarted during rebuild; this does not prove uninterrupted API-process recovery or auth persistence |
+| Live outage | Stop only project Mongo container, request proxied health, restart/setup, request health | Pass: `503 {"status":"unavailable"}` without infrastructure details; restart/setup restored `200 {"status":"ok"}`. The dev watcher also restarted during rebuild; this does not prove uninterrupted API-process recovery or auth persistence |
 | Compiled preview | `npm run preview`; Node HTTP assertions for `/`, `/signin`, `/signup`, `/app`, assets, `/api`, `/api/unknown`, `/api/health/unknown`, `/api/health` | Pass: direct routes serve built HTML, referenced JS loads, missing JS returns empty 404, API misses return JSON 404, health uses real DB. This proves static routing only; auth screens/guards are not implemented |
 | Local artifact preparation | `git check-ignore` for real env, brief copies, dependencies, dist; `git diff --check`; formatting check | Pass for M1 preparation; final M5 tracked-artifact and fresh-checkout gates remain Pending |
 
 Earlier unsuccessful attempts were corrected and rerun: initial API HTTP tests hit sandbox `EPERM`; Docker's default port conflicted with an existing service; the initializer initially used the wrong shell port/options field and treated NotYetInitialized as a returned result instead of a thrown error; command-level timeout options needed the pinned driver's `timeoutMS`. No failed/skipped attempt is counted as passing evidence. No security audit, real-browser auth journey, deployed HTTPS, multi-node failover, remote CI, or recruiter handoff was performed.
+
+## Handoff evidence review — 2026-10-20
+
+Documentation-only follow-up: checked Git status/history, repository remotes, available scripts, source inventory, the health-only shared contract, and the empty startup index hook against the milestone/evidence records. Confirmed `7a16842` as the implementation revision and no configured remote. Application tests, builds, installation, and live services were **not rerun** in this follow-up; the M1 results above remain the last executed application evidence. No acceptance status was promoted.
+
+Documentation validation: `git diff --check` and local Markdown-link checks for the three changed files passed.
+
+The next evidence increment is M2's shared auth-schema boundary coverage under T03. A passing schema suite alone must not mark T03 Pass: direct API validation and matching browser behavior remain necessary. T12 likewise stays Pending until its remaining persistence, production-control, and clean-checkout criteria are demonstrated.
 
 ## Release gates
 
