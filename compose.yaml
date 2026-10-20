@@ -1,0 +1,37 @@
+name: easy-generator
+
+services:
+  mongodb:
+    image: mongo:8.0.32@sha256:d0d926f94df099bff534b7ee5b5986458131a22489dfff8664509af0c1e2ca9c
+    command:
+      [
+        'mongod',
+        '--replSet',
+        'easy-generator-rs',
+        '--bind_ip_all',
+        '--port',
+        '27018',
+      ]
+    ports:
+      - '127.0.0.1:27018:27018'
+    volumes:
+      - mongodb-data:/data/db
+      - ./scripts/mongo-init.js:/opt/easy-generator/mongo-init.js:ro
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mongosh',
+          '--quiet',
+          '--port',
+          '27018',
+          '--eval',
+          "const h = db.hello(); quit(h.isWritablePrimary && h.setName === 'easy-generator-rs' ? 0 : 1)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  mongodb-data:

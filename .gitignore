@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.data/
+test-results/
+playwright-report/
+*.log
+.DS_Store
+Full_Stack_Test_Task.pdf
+Full_Stack_Test_Task.md
