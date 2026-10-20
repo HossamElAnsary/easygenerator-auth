@@ -8,6 +8,7 @@ export default [
       '**/dist/**',
       '**/node_modules/**',
       '**/coverage/**',
+      '.cache/**',
       'test-results/**',
       'playwright-report/**',
     ],
