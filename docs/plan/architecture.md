@@ -87,6 +87,8 @@ These interpretations and upper bounds are chosen safeguards, not extra rules qu
 
 Never trim, normalize, lowercase, or truncate passwords. Whitespace is permitted but does not satisfy the special-character requirement. Do not add uppercase/lowercase requirements. Email lowercasing is the selected account-identity policy; do not remove dots or rewrite provider-specific aliases. Apply a 16 KiB JSON body limit before expensive work, and construct database queries from parsed scalar values only.
 
+Reject strings that contain unpaired UTF-16 surrogates (`Enter a valid …` field errors). JSON can carry them, but they cannot be encoded to UTF-8 for hashing or BSON storage without silent replacement, which would break exact preservation. Required-field, emptiness, and maximum-length checks run before format/composition checks and stop further checks for that field, so the email pattern never runs on an over-length value.
+
 ## A05 — HTTP contract
 
 All paths are prefixed with `/api`. All auth responses, including failures, send `Cache-Control: no-store`. Mutation requests require the origin/header/content-type rules in A07.
@@ -114,7 +116,7 @@ Auth error shape:
 }
 ```
 
-`fields` is present only for field validation errors. The same server-generated request ID is sent in `X-Request-Id` and used in safe logs. Error responses do not echo input values, SQL/Mongo errors, stack traces, hashes, or tokens.
+`fields` is present only for field validation errors. Failures with no field-specific issue (malformed JSON, a non-object body, or an unexpected property) use the generic message `The request body is invalid.` and omit `fields`; schema issues about unexpected keys are never echoed. The same server-generated request ID is sent in `X-Request-Id` and used in safe logs. Error responses do not echo input values, SQL/Mongo errors, stack traces, hashes, or tokens.
 
 | Condition | Status and code | Behavior |
 | --- | --- | --- |
@@ -122,6 +124,7 @@ Auth error shape:
 | Unknown email / incorrect password | `401 INVALID_CREDENTIALS` | Identical message: `Email or password is incorrect.` |
 | Missing, invalid, expired, revoked session or missing user | `401 UNAUTHENTICATED` | No user data; do not modify cookies on the session-check response |
 | Origin/custom-header rejection | `403 REQUEST_FORBIDDEN` | No state change |
+| Unknown API route or method | `404 NOT_FOUND` | Safe generic message; never SPA HTML or an echoed path |
 | Duplicate normalized email | `409 EMAIL_IN_USE` | `An account with this email already exists.` |
 | Oversized body | `413 PAYLOAD_TOO_LARGE` | Rejected before hashing |
 | Unsupported content type | `415 UNSUPPORTED_MEDIA_TYPE` | No form-encoded mutation support |
@@ -156,7 +159,9 @@ Logout is idempotent when the cookie is missing, malformed, expired, or already 
 
 Every POST requires **all three**: exact `Origin === APP_ORIGIN`, `X-CSRF-Protection: 1`, and JSON `Content-Type`. Reject absent, null, malformed, and mismatched origins; compare to configured public origin rather than incoming Host headers. Logout sends `{}`. CORS is disabled and GET never mutates state. The custom header is not a secret; it relies on browser cross-origin restrictions. SameSite is additional protection, not the only defense. Document required headers in curl/API examples. [OWASP CSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).
 
-Use Helmet and verify the production CSP permits the built application without enabling unsafe inline scripts. Render user text through ordinary React escaping; do not insert user HTML.
+The controls cover every `/api` request whose method is not GET, HEAD, or OPTIONS; all Nest handlers live under `/api`. They run before body parsing, so rejected requests are not read. JSON bodies are parsed without decompression; a compressed request body receives `415`.
+
+Use Helmet and verify the production CSP permits the built application without enabling unsafe inline scripts. Production uses Helmet's defaults, including HSTS and `upgrade-insecure-requests`. Local HTTP modes (development, test, and the loopback preview) disable only those two, because browsers ignore HSTS over HTTP and may upgrade loopback subresource requests to HTTPS, breaking the documented preview. Render user text through ordinary React escaping; do not insert user HTML.
 
 Rate limits are **per route and IP per 60-second window**: default 120; signup override 5; signin override 10; logout override 30. Use the maintained throttler with expiring in-memory counters. These initial limits are chosen values, not validated capacity guarantees. They reset on restart and are not shared across replicas; distributed/account-level defenses are out of scope. [Nest rate limiting](https://docs.nestjs.com/security/rate-limiting).
 
