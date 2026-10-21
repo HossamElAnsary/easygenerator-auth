@@ -8,6 +8,7 @@ coverage/
 .data/
 test-results/
 playwright-report/
+.playwright-mcp/
 *.log
 .DS_Store
 Full_Stack_Test_Task.pdf
