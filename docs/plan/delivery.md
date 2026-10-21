@@ -24,11 +24,19 @@ Statuses: **Planned**, **In progress**, **Verified**, **Blocked**. Blocked entri
 | M3 — Browser journey | M2 contract; UI shell may start after M1 | Three pages, session states, errors, and complete browser journey work | Verified: T03 browser parity, T09, T10; initial T11 review recorded (full T11 remains Pending M4) |
 | M4 — Quality gate | M2, M3 | Meaningful integration/browser checks, responsive/accessibility review, safe logs, production build review, and CI are complete | Verified locally: T01–T11 pass; T12 runtime/build and T16 code/security portions pass; T13 workflow review, local replays, and first remote runs done (green on `719be13`); the submitted revision's run is M6 |
 | M5 — Submission ready | M4 | Fresh-checkout README walkthrough, accurate AI record, evidence review, and publication-ready tracked files | Verified locally: T01–T12, T14, T16 pass; every requirement except R09 and B03 has passing evidence. Private CI run #6 exposed MongoDB 8.0's refusal of the runners' new kernel, fixed by moving to 7.0.45; later runs pass. T13's submitted-revision run and T15 are M6 |
-| M6 — Submission | M5; authorized submission action and destination details | Public GitHub revision verified and recruiter link handoff actually performed | Planned |
+| M6 — Submission | M5; authorized submission action and destination details | Public GitHub revision verified and recruiter link handoff actually performed | In progress — ready for handoff: the repository is public and verified logged out, and T13 passes (run #10 on `6b68db7`). The recruiter handoff (T15) waits for the user's instruction and the recipient |
 
 The dependency path is M1 → M2 → M3 integration → M4 → M5 → M6. After M1, the UI shell and backend work can run in parallel against the frozen contracts; shared-contract edits must be coordinated. Do not parallelize competing edits to the same contract or use a UI mock as proof that the backend works.
 
-## Current handoff — 2026-10-21 (after M5)
+## Current handoff — 2026-10-21 (M6, ready for handoff)
+
+- **Completed:** M0–M5, and M6's publication. `HossamElAnsary/easygenerator-auth` is public at https://github.com/HossamElAnsary/easygenerator-auth with the prepared description. A logged-out view showed `main` at `6b68db7` and README.md and AI.md byte-identical to the local files. Run #10 passed on `6b68db7`, so T13 passes. Before publication, the scan of every commit since `5dfebb3` and of the whole history found no credential or artifact, and `npm run check` passed (255 workspace and 10 Chromium tests). The documentation commit that records M6 sits on top of `6b68db7`; its own CI run is reported in the M6 handoff message.
+- **Unfinished:** T15, the recruiter link handoff. The final message (M6 result) has been prepared and shown to the user, and has not been sent. The state is **ready for handoff**, not **submitted**.
+- **Decisions to retain:** everything listed in the previous handoff below, unchanged. No code, configuration, or repository setting other than visibility and description changed in M6.
+- **Blockers:** the handoff needs the user's explicit instruction to send and the recruiter's contact. Nothing else is open.
+- **Next concrete task:** when instructed, send the M6 message to the named recipient, then record the date, channel, and recipient role (not the address) in T15, mark R09 and M6 accordingly, and set the state to **submitted**.
+
+## Previous handoff — 2026-10-21 (after M5)
 
 - **Completed:** M0–M5. M5 is revisions `76fd472`, `c25c6da`, `32cd707`, `3a178a0`, `88cc7c1`, and `b136c59` plus its evidence commits, all pushed to the private `origin/main`. T01–T12, T14, and T16 pass. Every requirement except R09 (public repository and handoff) and B03 (CI on the submitted revision) has passing evidence (Verification, M5 requirement reconciliation). `npm run check` passed lint/format, strict typecheck, **255 workspace tests (73 contracts, 142 API, 40 web)**, builds, and **10 Chromium tests**, against MongoDB 7.0.45 in the worktree and in a clean clone. Private CI: run #5 (`32cd707`) passed; run #6 (`ccdd621`) failed because GitHub's new runner kernel makes MongoDB 8.0 refuse to start; `b136c59` moved to MongoDB 7.0.45, and its runs are listed in Verification. The run on the last evidence commit is reported in the M5 handoff message, not here.
 - **Unfinished:** M6. The repository is still private. T13 stays Pending until the submitted public revision has a passing run, and T15 until the recruiter link handoff is confirmed. No deployment exists, and nothing was sent.
@@ -255,6 +263,37 @@ Use the user's authorization at the time of submission to create/push the public
 
 Verify the public repository, submitted commit, README, AI.md, and CI result. Provide the repository URL and prepared handoff text if sending is not authorized or the recruiter address is unavailable. Record that state as **ready for handoff**, not **submitted**. T15 passes only when the required link handoff is confirmed.
 
+### M6 result — 2026-10-21
+
+The user authorized making the repository public, setting the prepared description, and pushing M6 documentation commits after `npm run check` passed. Sending the recruiter message, releases, deployment, history rewrites, and other repository settings were not authorized, and none happened. The steps ran in the requested order. Exact commands and results are in Verification's M6 evidence.
+
+1. **Re-verification before publishing.** The working tree was clean, with `main` at `origin/main` (`6b68db7`). A credential and artifact scan covered every blob added since `5dfebb3` (8 commits, 23 blobs) and then the whole history (25 commits, 211 blobs), with a positive control proving the patterns fire. It found only synthetic test values and the dummy README address. Brief copies, `.env`, caches, build output, and test results are still ignored and untracked, and `npm run check` passed. The session-start notice of another session in the checkout was stale: that process had exited, and the detector was counting this session itself, so no worktree was needed.
+2. **Publication.** The repository was made public, and its description was set to the text prepared in M5. Only `main` existed on the remote, with no tags or releases.
+3. **Logged-out verification.** Unauthenticated `curl` saw the repository, `AI.md`, and commit pages (200), the prepared description, and `main` at `6b68db7`. README.md and AI.md served from raw.githubusercontent.com at that SHA match the local files byte for byte.
+4. **CI for the submitted revision (T13).** Run #10, triggered by the push of `6b68db7`, passed every step on `ubuntu-24.04` image 20261012.334.1 with kernel 6.17.0-1022-azure. The same code passed run #9 on kernel 7.0.0-1017-azure. No new dispatch was needed.
+5. **Records.** Verification (T13 Pass; T15 Pending with its public-repository portion recorded; release-gate status), this document, AI.md, PLAN.md, and README now say **ready for handoff**. The commit carrying these records changes only Markdown documentation. Its own push run, and its SHA as the submitted revision, are reported in the M6 handoff message rather than recorded in the commit itself.
+
+**Final recruiter message** (prepared and shown to the user; **not sent**. `<SHA>` is the head of `main` after the M6 record commit, given in the M6 handoff message):
+
+> Subject: Full Stack Test Task submission
+>
+> Hi [recruiter name],
+>
+> Here is my submission for the Full Stack Test Task: https://github.com/HossamElAnsary/easygenerator-auth
+>
+> The submitted revision is commit `<SHA>` on `main`, and its GitHub Actions run passes.
+>
+> It implements signup (email, name, and password, validated on both the frontend and the backend), signin, and an authenticated page that shows "Welcome to the application.", using React with TypeScript, NestJS, and MongoDB. `GET /api/auth/me` is the protected endpoint; sessions are opaque, stored server-side, and carried in an HttpOnly cookie. Logout, API integration and real-browser tests, GitHub Actions CI, safe request logs, and Markdown API documentation are included.
+>
+> The README explains setup with Docker and the pinned Node/npm versions. AI.md records where AI assisted, which approaches worked, and where its output was corrected.
+>
+> Thank you for your time. I am happy to walk through any part of it.
+>
+> Best regards,
+> Hossam
+
+**Remaining limitations:** those listed in the M5 result, except that the repository is now public and T13 passes. The recruiter handoff (T15) is the only open M6 item.
+
 ## Command contract to implement
 
 These are milestone-spanning command interfaces. M1 implements install, database setup, development, lint/typecheck/tests, builds, preview, and production startup. `check` and `test:e2e` are implemented at M3; `check:foundation` runs lint/typecheck/workspace tests/build without browsers. README lists actual available commands.
@@ -319,5 +358,7 @@ Planning estimate revised with the explicit database setup: M1 45–75 minutes; 
 | 2026-10-21 | Fix what the clean-checkout walkthrough and the independent review found: the SPA shell from an install path with a dot-directory (`76fd472`); README traps (npm upgrade, Vite's 127.0.0.1 banner, an inline comment interactive zsh passes to curl) and a startup line that now names `PORT` (`c25c6da`); the browser tool's output ignored (`32cd707`); a `Retry-After` beyond the largest timer delay spinning the wait (`3a178a0`); a shell response left open after a late read error (`88cc7c1`) | A02 (direct SPA routes), A07 (one generic startup line, still no values), T10, T12, T14, T16. No route, response, cookie, schema, rate-limit, or UI copy change. The `db:ready` timing note above was corrected | Fixed; private CI run #5 passed on `32cd707` |
 | 2026-10-21 | Replace MongoDB 8.0.32 with 7.0.45 (pinned by digest), under a new Compose volume name | CI run #6 failed `db:ready` because GitHub's new `ubuntu-24.04` image (20261018.339) runs kernel 7.0.0-1017-azure, and MongoDB 8.0 refuses to start on kernels 6.19 through 7.0.13 (SERVER-121912: its bundled TCMalloc breaks the kernel's rseq ABI). No 8.0.x release fixes it, there is no supported override, and Ubuntu's `7.0.0` kernel string stays blocked even where 8.0.30+ exempts 7.0.14 (SERVER-136848). MongoDB 7.0 predates that allocator and is supported until 2027-08-31. Rejected: keeping 8.0 on `ubuntu-22.04` runners (kernel 6.8), which fixes CI but not a reviewer on a current Linux kernel; MongoDB 8.2, a rapid release whose fix is unconfirmed. Volume `mongodb-data` becomes `mongodb-data-7.0`, because 7.0 cannot open files written by 8.0; nothing is deleted. A01/A08/A10 policy unchanged (majority/journal writes, linearizable session reads); B03/T12/T13 re-verified | Recorded before the change; implemented in `b136c59`; the gate passed against 7.0.45 locally and in a clean clone, and CI passed (Verification) |
 | 2026-10-21 | Close M5 submission readiness | T01–T12, T14, T16 pass; T13 Pending only for the submitted public revision's run, T15 for the handoff. Repository description and recruiter text prepared, not applied or sent | Verified locally; stop after M5 |
+| 2026-10-21 | Start authorized M6 from the clean `6b68db7` handoff; make `HossamElAnsary/easygenerator-auth` public and apply the description prepared in M5 | User authorized the visibility change, the description, and pushing M6 documentation after `npm run check`; sending the recruiter message was not authorized. R09/B03, T13/T15. Re-scan and the gate preceded publication; no code, configuration, scope, or other setting change | Public and verified logged out; T13 Pass (run #10 on `6b68db7`) |
+| 2026-10-21 | Record M6 as **ready for handoff** | T15 waits for the user's instruction and recipient; the final recruiter message is prepared with the public URL and the submitted SHA, and is not sent. The record commit's own CI run is reported in the handoff message | Ready for handoff; not submitted |
 
 Future entries should include the decision changed, rationale, affected requirement/check IDs, and validation impact. Do not overwrite history to conceal a scope reduction.
