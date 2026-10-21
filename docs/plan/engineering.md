@@ -12,18 +12,18 @@ Nest supports dependency injection and explicit runtime provider tokens; React's
 
 ## E02 — Backend responsibility map
 
-From baseline v1.4 this map is the M8 target. M8 implements it without changing any route, response, cookie, schema, rate limit, or database policy; until M8 closes, the code still follows the v1.3 map (`UsersService` and `SessionsService` own their models directly).
+From baseline v1.4 this map is the target M8 implemented, without changing any route, response, cookie, schema, rate limit, or database policy. Before M8 the code followed the v1.3 map, in which `UsersService` and `SessionsService` owned their models directly.
 
 | Unit | Owns | Boundary |
 | --- | --- | --- |
 | `AuthController` | Validated HTTP inputs, status codes, cookie issuance/deletion, public response serialization | Calls AuthService; no database queries or cryptographic work |
 | `AuthService` | The authentication use cases: signup, signin, session identity, logout. The only unit that coordinates users, sessions, and hashing | Uses the `UsersRepository` and `PasswordHasher` ports and `SessionsService`; no Express request/response objects, Mongoose, or Argon2 |
-| `UsersRepository` (port) and its MongoDB adapter | Port: the user persistence capabilities in E03. Adapter: the user model, normalized-email lookup, translation of only the email-index conflict, the explicit public projection, and the collection's required indexes | Only the adapter imports Mongoose or holds `ObjectId`s; callers see plain domain types with string IDs. Credential lookup stays internal to auth |
+| `UsersRepository` (port) and its MongoDB adapter | Port: the user persistence capabilities in E03. Adapter: the user model, normalized-email lookup, translation of only the email-index conflict, and the explicit public projection. The module declares the collection's required indexes in `user.indexes.ts`; the startup gate applies them | Only the adapter imports Mongoose or holds `ObjectId`s; callers see plain domain types with string IDs. Credential lookup stays internal to auth |
 | `SessionsService` | Session policy: token generation, shape check, digest, fixed lifetime, expiry against the injected `Clock`, and the revocation-confirmation rule (A10) | Uses the `SessionsRepository` port and `Clock`; no Mongoose; depends on neither auth nor users |
-| `SessionsRepository` (port) and its MongoDB adapter | Port: insert a session, delete by digest, authoritative lookup by digest. Adapter: the session model, the linearizable read options, and the collection's required indexes | Only the adapter imports Mongoose; it applies no expiry or confirmation policy |
+| `SessionsRepository` (port) and its MongoDB adapter | Port: insert a session, delete by digest, authoritative lookup by digest. Adapter: the session model and the linearizable read options. The module declares the collection's required indexes in `session.indexes.ts`; the startup gate applies them | Only the adapter imports Mongoose; it applies no expiry or confirmation policy |
 | `PasswordHasher` (port) and its Argon2 adapter | Argon2id hashing, verification, dummy verification, configured parameters | Encapsulates the maintained library; never modifies password input |
 | `SessionGuard` | Cookie extraction, authentication requirement, safe user context | Calls AuthService; checks public-route metadata; no persistence or hashing logic |
-| `DatabaseModule` | The Mongoose connection with the fixed concern policy, the writable-primary check, readiness, and the shared database time budget | Imported explicitly by modules with persistence; knows no feature module |
+| `DatabaseModule` | The Mongoose connection with the fixed concern policy, the writable-primary check, readiness, and the shared database time budget | Registered once by the composition root with its index gate; global, because `MongooseModule.forFeature()` resolves the connection application-wide; knows no feature module |
 | Startup index gate | Verifying every repository's required indexes before the application is ready | Lives in the composition root, the only code allowed to know every module |
 | Schema validation pipe | Applying shared request schemas | Produces structured validation failures without duplicating policy |
 | Exception filter | Mapping typed failures to safe HTTP errors and request IDs | Preserves distinction between rejected credentials and unavailable dependencies |
@@ -53,12 +53,12 @@ These rules apply to `apps/api/src`. `dependency-cruiser`, run by `npm run lint`
 1. Code outside a feature module, including the composition root, reaches it only through `modules/<name>/index.ts`. The index exports what other code needs (module class, ports, public types and decorators, and the collection's required-index specification for the startup gate), never an adapter or schema.
 2. `users` and `sessions` import neither `auth` nor each other. Orchestration flows from auth downward.
 3. `config/`, `common/`, `infrastructure/`, and `http/` never import `modules/`.
-4. `mongoose` and `@nestjs/mongoose` are imported only by MongoDB adapters, schemas, the feature module files that register their models, `infrastructure/database/`, and `config/` (which parses `MONGODB_URI` with the pinned driver). `argon2` is imported only by the Argon2 adapter.
+4. `mongoose`, `@nestjs/mongoose`, and the `mongodb`/`bson` driver packages are imported only by MongoDB adapters, schemas, the `users` and `sessions` module files (which register their models), `infrastructure/database/`, `config/` (which parses `MONGODB_URI` with the pinned driver), and the composition root (whose index gate reads collections from the connection). `argon2` is imported only by the Argon2 adapter. A module's `index.ts` never re-exports an adapter or schema.
 5. No circular dependencies.
 
 Typed errors keep one owner each. Domain and dependency errors (`InvalidCredentials`, `Unauthenticated`, `EmailInUse`, `DependencyUnavailable`) live in `common/`; request-control and validation errors live in `http/`; `describeFailure()` remains the single mapping to A05. Name each fixed budget once, next to its owner: the 5-second database budget in `infrastructure/database/`, the request/header timeouts and the 16 KiB body limit in `http/` or the composition root. Do not create a project-wide `constants`, `utils`, or `helpers` module.
 
-AuthModule imports UsersModule and SessionsModule. Each feature module registers its own model and exports only its port or service through `index.ts`. The application-wide kernel (validated configuration, `AppLogger`, `Clock`) may stay global because it is vendor-free and used everywhere; the database connection may not. Avoid circular imports, `forwardRef` workarounds, and a module for every utility.
+AuthModule imports UsersModule and SessionsModule. Each feature module registers its own model and exports only its port or service through `index.ts`. Two modules are global: the vendor-free kernel (validated configuration, `AppLogger`, `Clock`), used nearly everywhere, and `DatabaseModule`, because `@nestjs/mongoose` 12's `forFeature()` builds its model providers in a module with no imports, so the connection token must resolve application-wide (the same reason its own core module is global). Avoid circular imports, `forwardRef` workarounds, and a module for every utility.
 
 ### Ports and adapters
 
