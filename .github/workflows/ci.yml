@@ -65,3 +65,11 @@ jobs:
 
       - name: Production build and browser journey
         run: npm run test:e2e
+
+      # The database tools print one generic line by design; on failure, show
+      # the container's state instead. CI uses no database credentials.
+      - name: Show the MongoDB container after a failure
+        if: failure()
+        run: |
+          docker compose ps --all
+          docker compose logs --tail 60 mongodb
