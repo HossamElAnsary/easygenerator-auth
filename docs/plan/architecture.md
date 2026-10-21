@@ -17,6 +17,7 @@ Return to [PLAN.md](../../PLAN.md). This document owns implementation choices an
 | Contracts | Shared Zod schemas, inferred TypeScript request/response types, and policy constants | One validation policy used by browser and server |
 | Security libraries | Maintained Argon2 package, cookie parser, Helmet, Nest throttler | Standard implementations for hashing, cookies, headers, and throttling |
 | Verification | Vitest-compatible Nest test setup, Supertest, React Testing Library where useful, Playwright | Contract/integration checks plus a small browser suite |
+| Boundary and performance tooling (v1.4) | `dependency-cruiser` in `npm run lint` (M8); a pinned HTTP load generator for the local performance baseline (M9) | Engineering E02's module rules fail the gate when broken (T18); performance claims rest on repeatable measurements (T19). Exact versions are pinned when each milestone installs them |
 
 M1 pins compatible stable versions, the MongoDB image, and the Node/npm versions. Commit the lockfile; use `npm ci` thereafter. Do not use unpinned `latest` images or silently mix Nest package majors. The foundation gate must prove backend dependency injection, validation, shared-package imports, tests, and builds before feature work proceeds.
 
@@ -31,7 +32,7 @@ Planned layout:
 ```text
 apps/
   web/src/              # routes, auth context, forms, API client, styles
-  api/src/              # auth, users, sessions, config, common HTTP handling
+  api/src/              # composition root, config, common, infrastructure, http, modules/ (Engineering E02 from v1.4)
 packages/
   contracts/src/        # schemas, public types, validation constants
 tests/
@@ -47,7 +48,7 @@ package.json
 package-lock.json
 ```
 
-Keep controllers thin, business logic in services, and Mongo schemas near their owning module. A session guard resolves a public user for protected requests. Avoid generic repository frameworks, CQRS, event buses, or dependencies from contracts into either application. Shared contracts build before consumers; the development command must perform an initial build and watch subsequent contract changes.
+Keep controllers thin, business logic in services, and Mongo schemas near their owning module. From v1.4, Engineering E02 owns the API's module layout, repository ports, and enforced dependency rules. A session guard resolves a public user for protected requests. Avoid generic repository frameworks, CQRS, event buses, or dependencies from contracts into either application. Shared contracts build before consumers; the development command must perform an initial build and watch subsequent contract changes.
 
 ## A02 — One origin and runtime topology
 

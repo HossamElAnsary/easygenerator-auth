@@ -26,10 +26,21 @@ Statuses: **Planned**, **In progress**, **Verified**, **Blocked**. Blocked entri
 | M5 — Submission ready | M4 | Fresh-checkout README walkthrough, accurate AI record, evidence review, and publication-ready tracked files | Verified locally: T01–T12, T14, T16 pass; every requirement except R09 and B03 has passing evidence. Private CI run #6 exposed MongoDB 8.0's refusal of the runners' new kernel, fixed by moving to 7.0.45; later runs pass. T13's submitted-revision run and T15 are M6 |
 | M6 — Submission | M5; authorized submission action and destination details | Public GitHub revision verified and recruiter link handoff actually performed | In progress: publication done. The repository is public and verified logged out, and T13 passed for `6b68db7` (run #10) and `f7776e8` (run #11). M7 is verified, so the recruiter handoff (T15) now waits only for the user's instruction and the recipient |
 | M7 — Docker-only run and README | M6 publication; baseline v1.3 | B07: Dockerfiles for the MongoDB, application, and proxy images and one Compose file that runs the whole application without host Node (A12). R08/B05: a short README in newcomer order, with the API contract in `docs/api.md` and development details in `docs/development.md`. Exit: T17 passes; T13, T14, and T16 pass again on M7's head; T01–T12 still pass | Verified: T17 passes; T13 (run #13, both jobs), T14, and T16 pass on `f74212e`; T01–T12 still pass |
+| M8 — Backend module boundaries | M7; baseline v1.4 | B08: restructure `apps/api` to Engineering E02 (module layout, `index.ts` public surfaces, repository ports with MongoDB adapters, a non-global `DatabaseModule`, errors and budgets with one owner each) and enforce the dependency rules with `dependency-cruiser` in `npm run lint`. No route, response, cookie, schema, rate-limit, or database-policy change. Exit: T18 passes; T01–T17 still pass | Planned |
+| M9 — Backend performance | M8 | B09: a repeatable local load command and baseline, then only the optimizations it justifies (first candidates: bounded password-hashing admission and the thread-pool size; the linearizable session read is measured and its options put to the user). Exit: T19 passes; T01–T18 still pass | Planned |
 
-The dependency path is M1 → M2 → M3 integration → M4 → M5 → M6 publication → M7 → M6 handoff. After M1, the UI shell and backend work can run in parallel against the frozen contracts; shared-contract edits must be coordinated. Do not parallelize competing edits to the same contract or use a UI mock as proof that the backend works.
+The dependency path is M1 → M2 → M3 integration → M4 → M5 → M6 publication → M7 → M6 handoff. Baseline v1.4 adds M8 → M9 on the branch `refactor/m8-backend-structure`; the handoff does not wait for them (see the M8 decisions). After M1, the UI shell and backend work can run in parallel against the frozen contracts; shared-contract edits must be coordinated. Do not parallelize competing edits to the same contract or use a UI mock as proof that the backend works.
 
-## Current handoff — 2026-10-21 (after M7, ready for handoff)
+## Current handoff — 2026-10-21 (baseline v1.4, M8 and M9 planned)
+
+- **Completed:** M0–M5, M6's publication, and M7, as in the previous handoff. `main` is unchanged at `f36ab64` and stays **ready for handoff**.
+- **Changed:** the user started a backend optimization phase. They asked for clear separation of concerns (a data layer with repositories, a business layer, controllers, configuration), a modular monolith, and an opinion on what is missing, and asked to compare the structure of their NestJS template (`template-projects/nestjs-template`). Baseline v1.4 adds B08 and B09 (Requirements), the E02–E04 target design (Engineering), T18 and T19 (Verification), and M8 and M9 below. Planning happens on the branch `refactor/m8-backend-structure`, created from `f36ab64`.
+- **Unfinished:** M8 and M9 (nothing implemented); T15 on `main`.
+- **Decisions to retain:** everything in the earlier handoffs, plus the M8 and M9 decisions below.
+- **Blockers:** none for M8. Pushing the branch, opening a pull request, merging to `main`, and the recruiter handoff each need the user's instruction.
+- **Next concrete task:** M8 step 1, the baseline gate on the branch before any edit.
+
+## Previous handoff — 2026-10-21 (after M7, ready for handoff)
 
 - **Completed:** M0–M5, M6's publication, and M7. M7 is `b595ee7` (Docker files, Compose, CI), `1cb61c4` (README, `docs/api.md`, `docs/development.md`), `80446ee` (independent-review fixes), and `f74212e` (a troubleshooting note), plus its evidence commit, all on the public `origin/main`. Someone with only Docker runs `docker compose up --wait` and opens `http://localhost:8080`. T01–T14, T16, and T17 pass; run #13 passed both CI jobs on `f74212e`. The evidence commit's own run is reported in the M7 handoff message.
 - **Unfinished:** T15. The M6 recruiter text is superseded; the M7 result has the re-prepared message, which names the head SHA given in the M7 handoff message. Nothing was sent. The state is **ready for handoff**, not **submitted**.
@@ -372,6 +383,55 @@ Decisions made during implementation (change log below):
 
 **Remaining limitations:** those in the M5 result, except that the repository is public and T13 passes; plus, for the Docker stack: Windows is unverified, Docker Desktop may count every local browser as one rate-limit client, a body over 1 MiB gets nginx's HTML 413, and the stack is a loopback HTTP preview, not a deployment.
 
+## M8 — Backend module boundaries
+
+Requested by the user on 2026-10-21 as the first step of a backend optimization phase. Baseline v1.4 adds B08; Engineering E02–E04 own the target design and T18 the acceptance. Every existing contract holds: no route, response, cookie, schema, rate-limit, logging, or database-policy change. Work on `refactor/m8-backend-structure`, in this order.
+
+1. **Baseline.** Run `npm run check` on the branch before any edit and keep its output. Record the current `apps/api/src` file list and the API test count (142).
+2. **Rules before moves.** Add `dependency-cruiser`, pinned exactly (check its engines, its TypeScript 6 parsing, and that it needs no `allowScripts` entry). Write E02's five rules for `apps/api/src` and add them to `npm run lint`. Run them on the v1.3 tree and record what they report, for example `database/startup-indexes.ts` importing both services and the services importing Mongoose. That list is the failing test the restructure must clear.
+3. **Layout.** Move files with `git mv` into E02's layout (composition root, `config/`, `common/`, `infrastructure/`, `http/`, `modules/`) and add each feature module's `index.ts`. Keep `.js` relative imports and explicit `@Inject`. Update the `db:ready` script for the initializer's new compiled path.
+4. **Database module.** Move the connection provider out of `CoreModule` into a non-global `DatabaseModule` with `DatabaseService`, imported by `users`, `sessions`, and `health`. Each module exports its collection's index specification; the startup gate in the composition root verifies them before readiness, in the same order as today.
+5. **Ports and adapters.** Add the `UsersRepository` and `SessionsRepository` ports and their MongoDB adapters. Move session policy (token, lifetime, expiry, revocation confirmation) into `SessionsService` on top of its port. Keep `withDatabase()` at every driver call inside the adapters. `AuthService` uses the repository's projection instead of rebuilding the public user.
+6. **One owner each.** Split request-control and validation errors into `http/`, keeping domain and dependency errors in `common/`. Name the 5-second database budget once, and the HTTP timeouts and the 16 KiB body limit next to their owner.
+7. **Tests.** Existing suites change only import paths and provider tokens; no assertion changes. Add `SessionsService` unit tests against a contract-faithful fake: malformed tokens make no repository call, the exact expiry boundary, and revocation that deletes nothing then finds the session (503) or finds nothing (success). Show each new test failing against a deliberate mutation.
+8. **Documentation.** Update CLAUDE.md's code map and paths, AGENTS.md's `apps/api` row, README's project structure, and `docs/development.md` where they name moved files.
+9. **Review and gates.** Probe each rule with a deliberate violation (T18), then remove the probes. Have an independent read-only review check the diff against E02–E04 and the unchanged contracts (T16). Run `npm run check`. Push the branch or open a pull request only when the user says so; CI runs on pull requests.
+
+Exit evidence: T18 passes and T01–T17 still pass locally on M8's head. T13 on M8's code needs a pushed branch or pull request, which waits for the user's instruction.
+
+### M8 decisions and open questions — 2026-10-21
+
+**Needs your eyes** (the calls the user may want to overturn, with what reversing them costs):
+
+1. **Two-layer repositories, not the template's three.** Port (an abstract class that is also the injection token) bound straight to its MongoDB adapter. The template's wrapper layer (`RefreshTokenRepository`) only forwards each method to its Prisma class, so it adds code without a boundary. Reversal cost: low; a wrapper can be inserted later behind the same token.
+2. **A repository port at all.** The alternative was renaming `UsersService` to `UsersRepository` without ports. Ports were chosen because rule 4 (no Mongoose in policy code) then becomes checkable and session policy unit-testable. Cost: four more files. Reversal cost: low (bind the adapter class directly).
+3. **The handoff does not wait for M8/M9.** `main` stays the submitted candidate at `f36ab64`. If M8 or M9 merges first, T13, T14, and T16 run again on the new head and the recruiter message is re-prepared with its SHA. Reversal cost: none.
+
+Other decisions:
+
+- **What was taken from the template:** boundaries enforced with `dependency-cruiser`; `index.ts` as each module's only public surface; abstract-class ports as tokens; no ORM types outside adapters; infrastructure (vendor-bound) separate from `common/` (vendor-free); orchestration in one named place (`AuthService`, which plays the template's application-layer role); explicit database-module imports.
+- **What was not taken, and why:** the pass-through wrapper (above); entity classes (`create`/`rehydrate`/`toPersistence`/`toPublic`) for a three-field user; a global module re-exporting its sub-modules and the "transitional" re-exports of internals in a public barrel, which is how that template's boundary eroded; a facade per area for a single consumer; `new Date()` inside repositories (our injected `Clock` stays); `TimeoutInterceptor`, which does not cancel the underlying work; class-validator DTOs, JWT/refresh tokens, Redis, queues, the outbox, the `@/` path alias, and Swagger decorators, each of which conflicts with a recorded decision or exclusion.
+- **No interceptors, extra pipes, `utils`/`helpers` folders, or TypeScript enums.** Request logging must stay Express middleware to see requests that never reach a handler (404, request-control 403/415, body-parser 413). The one schema pipe covers every input. The contracts package already shares string unions and Zod enums with the web app.
+- **The kernel stays global.** Validated configuration, `AppLogger`, and `Clock` are vendor-free and used everywhere; only the database connection becomes an explicit import.
+- **`@Public()` stays in `auth`** next to `SessionGuard`, which gives it meaning (A09), and is exported through `auth`'s `index.ts`; `health` imports it from there.
+- **Rule scope.** The rules cover `apps/api/src` only. Tests may import internals, because fault-injection suites reach models and providers directly. The web app keeps its current structure (E05).
+
+## M9 — Backend performance
+
+Requested together with M8; starts from M8's head. Baseline v1.4 adds B09; T19 owns the acceptance. Measure before changing anything, and keep every change that touches a guarantee behind the user's decision.
+
+1. **Baseline gate.** `npm run check` on M8's head.
+2. **Load command.** Add a pinned HTTP load generator and one documented command (planned name `npm run bench`) that builds, starts the compiled API on a free port against an isolated database, seeds accounts, runs T19's endpoint and concurrency matrix, and prints a table. Rate limits stay enabled; each simulated client gets its own `X-Forwarded-For` under `TRUST_PROXY=127.0.0.1`, as the test harness does. Nothing in `src/` changes for the benchmark.
+3. **Baseline results.** Run it three times on M8's head and record the medians with the commit, machine, OS, Node, and MongoDB versions in Verification.
+4. **Hypotheses, each tested before any change:**
+   - *Password hashing queues on libuv's thread pool.* Argon2 runs there (4 threads by default), sharing it with `dns.lookup`. Expected signs: signin latency rising with concurrency above 4, and `/api/health` slowing during signin load. Test: compare `UV_THREADPOOL_SIZE` values through the environment only.
+   - *The linearizable session read dominates `/auth/me`.* M2 measured about 0.1 s per request, against single-digit milliseconds for the logout delete. Suspected cause: on the single-node set, the read's majority no-op write waits for the next journal commit (about 100 ms by default). Test: time `find` with linearizable versus majority read concern directly against the replica set, and read the server's journal commit interval.
+5. **Hashing admission, only if 4 confirms queueing.** Record the contract addition in Architecture A05/A07 before code: at most N hashes in flight and a bounded wait, beyond which signup and signin answer `503 SERVICE_UNAVAILABLE` with `Retry-After` without hashing. Implement it test-first, set `UV_THREADPOOL_SIZE` where the measurements support it (README, `.env.example`, the app image), and measure again.
+6. **Session read policy: options to the user, no change without a decision.** Present the measured cost and the options: keep linearizable reads (A10 as written); majority reads, with the stated risk that a deposed primary briefly accepts a revoked session; or another option the measurements surface. Any change updates A10 and its checks first.
+7. **Gates.** `npm run check`, an independent review of the changes (T16), and T19's before/after table. Push or pull request only when the user says so.
+
+Exit evidence: T19 passes; T01–T18 still pass. Laptop numbers on a single-node replica set are relative comparisons, not capacity claims.
+
 ## Command contract to implement
 
 These are milestone-spanning command interfaces. M1 implements install, database setup, development, lint/typecheck/tests, builds, preview, and production startup. `check` and `test:e2e` are implemented at M3; `check:foundation` runs lint/typecheck/workspace tests/build without browsers. README lists actual available commands.
@@ -384,7 +444,7 @@ These are milestone-spanning command interfaces. M1 implements install, database
 | `docker compose up --wait` | From M7: build missing images and run the whole application at `http://localhost:8080` without host Node (A12) |
 | `npm run db:ready` | Initialize the known local/test replica set idempotently if needed and wait for a writable primary; never reconfigure a managed database |
 | `npm run dev` | Build contracts initially, then watch contracts/API/web with correct startup order |
-| `npm run lint` | Check code without modifying files |
+| `npm run lint` | Check code without modifying files; from M8 also the API dependency rules (Engineering E02) |
 | `npm run typecheck` | Check all TypeScript workspaces |
 | `npm run test` | Run schema/unit and API integration checks using isolated MongoDB |
 | `npm run test:e2e` | Run focused Playwright browser tests with controlled server lifecycle |
@@ -392,10 +452,11 @@ These are milestone-spanning command interfaces. M1 implements install, database
 | `npm run preview` | Serve built web/API locally with explicitly documented development cookie settings |
 | `npm run start:prod` | Run the built server with validated production configuration and web assets |
 | `npm run check` | Run lint, typecheck, application tests, browser tests, and build; prerequisites documented |
+| `npm run bench` | From M9: build, start the compiled API against an isolated database, and run T19's load matrix with rate limits enabled |
 
 ## Time and risk budget
 
-Planning estimate revised with the explicit database setup: M1 45–75 minutes; M2 75–120; M3 60–90; M4 45–75; M5 25–40. Roughly **4–7 hours**, with tooling/debugging and submission availability potentially extending it. This is an estimate, not an achieved duration or a deadline promised by the brief. Record actual time if measured. M7 (v1.3) adds an estimated 2–4 hours: images and Compose, verification on two architectures, CI, and the README rewrite with its walkthrough.
+Planning estimate revised with the explicit database setup: M1 45–75 minutes; M2 75–120; M3 60–90; M4 45–75; M5 25–40. Roughly **4–7 hours**, with tooling/debugging and submission availability potentially extending it. This is an estimate, not an achieved duration or a deadline promised by the brief. Record actual time if measured. M7 (v1.3) adds an estimated 2–4 hours: images and Compose, verification on two architectures, CI, and the README rewrite with its walkthrough. v1.4 adds an estimated 2–4 hours for M8 (rules, moves, ports, tests, review) and 2–4 hours for M9 (load command, baseline, hypothesis tests, and at most one or two measured changes).
 
 | Risk | Response |
 | --- | --- |
@@ -413,6 +474,10 @@ Planning estimate revised with the explicit database setup: M1 45–75 minutes; 
 | Port 8080 already in use | `APP_PORT` moves the published port and `APP_ORIGIN` together |
 | Shared network namespace surprises (ports declared on `mongodb`; recreating it recreates the others) | Comment it in `compose.yaml`; cover recreation in T17 |
 | Docker Desktop on Windows is not available to verify | No shell entrypoints; verify macOS arm64 locally and Linux amd64 in CI; state Windows as unverified |
+| The M8 restructure changes behavior unnoticed | Rules first, `git mv` for history, existing assertions untouched, mutation-checked new tests, full gate and independent review |
+| Lint autofix turns a moved constructor dependency into `import type` and breaks injection | Explicit `@Inject(Token)` on every constructor dependency (CLAUDE.md); the real module graph runs in every integration suite |
+| Benchmark load trips the rate limits or is read as capacity | Per-client `X-Forwarded-For` under loopback proxy trust, as the harness does; record environment; compare only runs from the same command and machine |
+| An optimization quietly weakens a guarantee | Hashing admission and any read-policy change go through Architecture and the user's decision before code |
 
 ## Change log
 
@@ -449,5 +514,6 @@ Planning estimate revised with the explicit database setup: M1 45–75 minutes; 
 | 2026-10-21 | Start authorized M7 from `23a6e5d` | The user approved the v1.3 plan ("go-ahead"). Baseline gate passed before any edit; worked in the checkout because the session-start collision notice was stale. B07, R08, B05; T13, T14, T16, T17 | Implementation in progress |
 | 2026-10-21 | Clarify A12 and T17 during M7: the documented command is `docker compose up --wait` instead of `up --build --wait`; images keep Compose's default `<project>-<service>` names, and `mongodb-init` builds its own copy of the MongoDB image; health checks drop `start_interval`; the proxy streams request bodies | On Docker Desktop's containerd store, the default provenance attestation gives each build a new image ID, so `--build` recreated every container and T17's "a repeated run changes nothing" could not hold; Compose 2.33 cannot disable the attestation. Registry-style names could be pulled from a namespace someone else controls, and the shared image name broke other project names. `start_interval` needs Engine 25+. Buffering made nginx read bodies before A07's controls ran. No route, response, cookie, schema, rate-limit, or database-policy change; T17's command wording updated with this entry | Implemented in `b595ee7` and `80446ee`; verified (Verification M7 evidence) |
 | 2026-10-21 | Close M7 | T17 passes; T13 (run #13, both jobs), T14, and T16 pass on `f74212e`; T01–T12 still pass. The recruiter message is re-prepared, not sent | Verified; ready for handoff |
+| 2026-10-21 | Baseline v1.4: add B08, enforced backend module boundaries (Engineering E02–E04 target design, T18, M8), and B09, measured backend performance (T19, M9). Narrow Requirements' exclusion from "load testing" to capacity or load certification. Work happens on the branch `refactor/m8-backend-structure` | The user began a backend optimization phase: asked for separation of concerns (repositories for data access, a business layer, controllers, configuration), a modular monolith, and missing ideas, and asked to compare their NestJS template. Review found the layers already exist under misleading names (`UsersService`/`SessionsService` are repositories), one reversed dependency (`database/startup-indexes.ts` imports both feature services), database wiring split across `CoreModule` and `AppModule`, mixed error ownership, repeated budgets, and no enforcement. Adopted from the template: `dependency-cruiser` rules, `index.ts` surfaces, abstract-class ports, vendor separation. Rejected: its pass-through repository wrapper, entity classes, global re-exporting modules, facades, interceptors for logging, and everything that conflicts with A01/A04/A09 or the exclusions. M9 measures first; hashing admission and any session read-policy change need Architecture updates, and the latter the user's decision. No route, response, cookie, schema, rate-limit, or database-policy change is planned in M8 | Planning only; nothing implemented; `main` unchanged |
 
 Future entries should include the decision changed, rationale, affected requirement/check IDs, and validation impact. Do not overwrite history to conceal a scope reduction.

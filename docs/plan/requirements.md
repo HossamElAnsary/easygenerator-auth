@@ -33,6 +33,8 @@ These are optional in the brief but included in this baseline. Removing one requ
 | B05 | API documentation | Routes, schemas, errors, cookie/origin requirements, and examples in Markdown | T14 |
 | B06 | Consistent error handling | Field, authentication, rate-limit, dependency, and unexpected-error responses plus UI recovery | T03, T05, T08, T10 |
 | B07 | Docker-only run (added in v1.3 at the user's request) | One `docker compose up` builds and starts the whole application (MongoDB, the API serving the compiled UI, and a front proxy) on a machine with Docker and no host Node. A loopback HTTP preview only: no registry publishing, HTTPS, or deployment | T17 |
+| B08 | Enforced backend module boundaries (added in v1.4 at the user's request) | The API follows Engineering E02's layout, repository ports, and dependency rules, and the gate fails when a rule is broken. A behavior-preserving restructure: no route, response, cookie, schema, rate-limit, or database-policy change | T16, T18 |
+| B09 | Measured backend performance (added in v1.4 at the user's request) | A repeatable local load baseline for the four auth endpoints, and only those optimizations the measurements justify, each measured before and after. A single-machine, single-node baseline, not capacity certification; a change that weakens a security or consistency guarantee needs the user's decision and an Architecture update first | T19 |
 
 Although the brief lists error handling as a bonus, safe treatment of ordinary invalid input and failed authentication is part of our chosen working baseline.
 
@@ -54,7 +56,7 @@ Architecture A09 explicitly selects opaque cookie sessions without JWT, refresh 
 - Refresh tokens, remember-me options, device management, logout-all-devices, and cross-tab synchronization beyond rechecking on navigation/focus.
 - A business dashboard, extra application content, custom illustrations, animations, a component library project, or multiple themes.
 - Multiple API replicas, Redis, queues, microservices, Kubernetes, cloud infrastructure, hosted environments, published container images or registries, and continuous deployment.
-- Exhaustive cross-browser certification, load testing, a formal security audit, or 100% test coverage.
+- Exhaustive cross-browser certification, capacity or load certification (B09's local baseline is not one), a formal security audit, or 100% test coverage.
 
 These exclusions constrain this assignment, not a future product. A real public service would need further operational and account-recovery decisions before launch.
 
