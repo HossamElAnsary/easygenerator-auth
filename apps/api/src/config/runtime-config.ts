@@ -1,8 +1,14 @@
-import { isIP } from 'node:net';
+import { BlockList, isIP } from 'node:net';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 
 export const RUNTIME_CONFIG = Symbol('RUNTIME_CONFIG');
+
+/**
+ * The API accepts connections only on loopback, so in production every request
+ * arrives through a reverse proxy on the same host (Architecture A02/A07).
+ */
+export const LISTEN_HOST = '127.0.0.1';
 
 const environmentSchema = z.object({
   NODE_ENV: z
@@ -48,6 +54,19 @@ function trustedAddresses(value: string): false | string[] {
   return addresses;
 }
 
+/** Whether the trusted list covers LISTEN_HOST, the only peer the API sees. */
+function trustsSameHostProxy(addresses: false | string[]): boolean {
+  if (!addresses) return false;
+  const trusted = new BlockList();
+  for (const address of addresses) {
+    const [ip = '', prefix] = address.split('/');
+    const family = isIP(ip) === 4 ? 'ipv4' : 'ipv6';
+    if (prefix === undefined) trusted.addAddress(ip, family);
+    else trusted.addSubnet(ip, Number(prefix), family);
+  }
+  return trusted.check(LISTEN_HOST, 'ipv4');
+}
+
 export function validateRuntimeConfig(env: NodeJS.ProcessEnv): RuntimeConfig {
   const result = environmentSchema.safeParse(env);
   if (!result.success)
@@ -68,36 +87,46 @@ export function validateRuntimeConfig(env: NodeJS.ProcessEnv): RuntimeConfig {
     origin.username ||
     origin.password ||
     !['http:', 'https:'].includes(origin.protocol) ||
-    (values.NODE_ENV === 'production' && origin.protocol !== 'https:') ||
-    (origin.protocol === 'http:' &&
-      !['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname))
+    // Only production issues Secure cookies and HSTS, so every other mode
+    // serves a loopback origin.
+    (values.NODE_ENV === 'production'
+      ? origin.protocol !== 'https:'
+      : !['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname))
   ) {
     throw new Error(
-      'APP_ORIGIN must be an exact origin; production requires HTTPS.',
+      'APP_ORIGIN must be an exact origin: loopback outside production, HTTPS in production.',
     );
   }
 
   let replicaSet: string;
   try {
-    // Parse with the actual pinned driver, including mongodb+srv/multi-host URIs.
-    const client = new mongoose.mongo.MongoClient(values.MONGODB_URI);
-    const options = client.options;
-    if (!options.replicaSet || options.directConnection || options.loadBalanced)
-      throw new Error();
+    // Checked before the driver parses the URI, so a rejected deprecated
+    // option cannot make it print a warning.
     const query = new URLSearchParams(values.MONGODB_URI.split('?')[1] ?? '');
     const fixedPolicy = new Set([
       'readpreference',
+      'readpreferencetags',
+      'maxstalenessseconds',
       'readconcernlevel',
       'w',
       'journal',
       'j',
       'wtimeoutms',
+      // Deprecated alias; the pinned driver lets it override wtimeoutMS.
+      'wtimeout',
       'retrywrites',
+      'retryreads',
       'serverselectiontimeoutms',
+      'connecttimeoutms',
       'sockettimeoutms',
+      'waitqueuetimeoutms',
       'timeoutms',
     ]);
     if ([...query.keys()].some((key) => fixedPolicy.has(key.toLowerCase())))
+      throw new Error();
+    // Parse with the actual pinned driver, including mongodb+srv/multi-host URIs.
+    const options = new mongoose.mongo.MongoClient(values.MONGODB_URI).options;
+    if (!options.replicaSet || options.directConnection || options.loadBalanced)
       throw new Error();
     if (!options.dbName || options.dbName === 'test') throw new Error();
     replicaSet = options.replicaSet;
@@ -110,6 +139,14 @@ export function validateRuntimeConfig(env: NodeJS.ProcessEnv): RuntimeConfig {
   if (values.NODE_ENV === 'production' && values.SERVE_WEB !== 'true') {
     throw new Error('Production requires SERVE_WEB=true.');
   }
+  const trustProxy = trustedAddresses(values.TRUST_PROXY);
+  // Without trusting the same-host proxy, every client shares the proxy's
+  // address, so each per-IP rate limit becomes one global bucket.
+  if (values.NODE_ENV === 'production' && !trustsSameHostProxy(trustProxy)) {
+    throw new Error(
+      `Production requires TRUST_PROXY to include ${LISTEN_HOST}, the reverse proxy in front of the loopback listener.`,
+    );
+  }
   return {
     mode: values.NODE_ENV,
     port,
@@ -117,6 +154,6 @@ export function validateRuntimeConfig(env: NodeJS.ProcessEnv): RuntimeConfig {
     replicaSet,
     appOrigin: values.APP_ORIGIN,
     serveWeb: values.SERVE_WEB === 'true',
-    trustProxy: trustedAddresses(values.TRUST_PROXY),
+    trustProxy,
   };
 }

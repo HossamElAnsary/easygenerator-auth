@@ -1,12 +1,12 @@
 import { createApplication } from './application.js';
-import { validateRuntimeConfig } from './config/runtime-config.js';
+import { LISTEN_HOST, validateRuntimeConfig } from './config/runtime-config.js';
 
 async function bootstrap(): Promise<void> {
   const config = validateRuntimeConfig(process.env);
   const app = await createApplication(config);
   app.enableShutdownHooks();
   try {
-    const server = await app.listen(config.port, '127.0.0.1');
+    const server = await app.listen(config.port, LISTEN_HOST);
     server.requestTimeout = 15000;
     server.headersTimeout = 10000;
     console.info('API ready.');

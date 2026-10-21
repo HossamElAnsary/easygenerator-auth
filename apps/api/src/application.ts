@@ -99,7 +99,15 @@ function serveWebApplication(webDirectory: string): express.RequestHandler {
       next();
       return;
     }
-    assets(req, res, () => {
+    assets(req, res, (error?: unknown) => {
+      // serve-static forwards an error only for a file that exists (a range,
+      // precondition, or read failure); keep its status. A missing file falls
+      // through without one.
+      if (error) {
+        if (res.headersSent) res.destroy();
+        else res.status(httpStatusOf(error)).end();
+        return;
+      }
       if (req.path.startsWith('/assets/') || extname(req.path)) {
         res.status(404).end();
         return;
@@ -110,4 +118,15 @@ function serveWebApplication(webDirectory: string): express.RequestHandler {
       });
     });
   };
+}
+
+/** The HTTP status carried by a static-file error, or 500 without one. */
+function httpStatusOf(error: unknown): number {
+  const status =
+    typeof error === 'object' && error !== null && 'status' in error
+      ? error.status
+      : undefined;
+  return typeof status === 'number' && status >= 400 && status < 600
+    ? status
+    : 500;
 }

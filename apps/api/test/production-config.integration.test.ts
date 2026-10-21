@@ -119,6 +119,20 @@ describe('production configuration', () => {
     expect(apiMiss.headers['content-type']).toContain('application/json');
   });
 
+  it('keeps the status of a failed request for an existing asset', async () => {
+    // Once the file exists, serve-static forwards range, precondition, and
+    // read errors; only a missing asset is a 404.
+    const range = await api(testApp)
+      .get('/assets/app.js')
+      .set('Range', 'bytes=999-');
+    expect(range.status).toBe(416);
+    expect(range.headers['content-range']).toBe('bytes */10');
+    const precondition = await api(testApp)
+      .get('/assets/app.js')
+      .set('If-Match', '"stale"');
+    expect(precondition.status).toBe(412);
+  });
+
   it('never answers a differently cased API path with the SPA shell', async () => {
     // Express matches routes case-insensitively, so these are API requests.
     const unknown = await api(testApp).get('/API/unknown');

@@ -53,9 +53,10 @@ Keep controllers thin, business logic in services, and Mongo schemas near their 
 
 - Development: browser uses `http://localhost:5173`; Vite proxies `/api` to the API on loopback port 3000. The browser never needs a separate API origin. Preserve the browser's Origin header through the proxy.
 - Production build: Nest serves the compiled web assets and the API. An HTTPS reverse proxy exposes one public origin. API routes and unknown `/api/*` paths must never fall through to the SPA HTML response.
-- Direct requests to `/signin`, `/signup`, and `/app` serve the SPA. Missing assets remain 404 responses. Browser routes render their own not-found state.
+- Direct requests to `/signin`, `/signup`, and `/app` serve the SPA. Missing assets remain 404 responses; a failed request for an existing asset keeps its own status (for example 416 or 412). Browser routes render their own not-found state.
 - Deployment scope is one API process plus MongoDB. TLS termination and cloud provisioning are outside this assignment; the README must state the HTTPS and trusted-proxy requirements.
-- A local built-artifact preview uses loopback HTTP and development cookie settings, and is explicitly labeled a preview. It must not claim to validate a deployed HTTPS environment.
+- The API listens on `127.0.0.1` only, so the HTTPS reverse proxy runs on the same host or network namespace, redirects HTTP to HTTPS, and overwrites `X-Forwarded-For` (A07). Direct public access to the API port is not possible by construction.
+- A local built-artifact preview uses loopback HTTP and development cookie settings, and is explicitly labeled a preview. It must not claim to validate a deployed HTTPS environment. Development, test, and preview modes serve only a loopback origin, because they issue cookies without `Secure` and omit HSTS.
 - CORS remains disabled. The fetch client uses relative `/api` URLs and same-origin credentials. No session secret is stored in localStorage, sessionStorage, query parameters, or application JSON.
 
 ## A03 — Data model and indexes
@@ -165,7 +166,7 @@ Use Helmet and verify the production CSP permits the built application without e
 
 Rate limits are **per route and IP per 60-second window**: default 120; signup override 5; signin override 10; logout override 30. Use the maintained throttler with expiring in-memory counters. These initial limits are chosen values, not validated capacity guarantees. They reset on restart and are not shared across replicas; distributed/account-level defenses are out of scope. [Nest rate limiting](https://docs.nestjs.com/security/rate-limiting).
 
-Default proxy trust is off. If behind a reverse proxy, configure only its known address/subnet and ensure public traffic cannot bypass it. The proxy must overwrite client forwarding headers; use trusted `req.ip`, never raw `X-Forwarded-For`, for limiting. Avoid unconditional proxy trust. [Express proxy guidance](https://expressjs.com/en/guide/behind-proxies/).
+Default proxy trust is off. If behind a reverse proxy, configure only its known address/subnet and ensure public traffic cannot bypass it. The proxy must overwrite client forwarding headers; use trusted `req.ip`, never raw `X-Forwarded-For`, for limiting. Avoid unconditional proxy trust. Production is always behind the same-host proxy (A02), so production startup requires `TRUST_PROXY` to include `127.0.0.1`; without it every client shares the proxy's address and each per-IP limit becomes one global bucket. Upstream proxy addresses that the local proxy forwards for may be added. [Express proxy guidance](https://expressjs.com/en/guide/behind-proxies/).
 
 Log request ID, method, route, status, elapsed time, and safe error/event codes. Do not log request bodies, email addresses, passwords/hashes, session tokens, Cookie/Set-Cookie, Authorization, or database credentials. Sanitize unexpected exceptions before logging; raw driver errors can contain submitted data. Bound request duration and use graceful shutdown; do not return internal dependency details through health or errors.
 
@@ -175,10 +176,10 @@ Log request ID, method, route, status, elapsed time, and safe error/event codes.
 | --- | --- |
 | `NODE_ENV` | Validated development/test/production mode |
 | `PORT` | API port; local default 3000 |
-| `MONGODB_URI` | Required runtime connection URI; never exposed to the client |
-| `APP_ORIGIN` | One exact scheme/host/port origin, no path; localhost HTTP for development, HTTPS required in production |
+| `MONGODB_URI` | Required runtime connection URI; never exposed to the client. Must name a replica set and database and carry no read-preference, read/write-concern, retry, or timeout options (including the deprecated `wtimeout` alias), because A10's policy is fixed in code |
+| `APP_ORIGIN` | One exact scheme/host/port origin, no path; a loopback host (`localhost`, `127.0.0.1`, `[::1]`) outside production, HTTPS required in production |
 | `SERVE_WEB` | False during Vite development; true for built preview/production; require assets when true |
-| `TRUST_PROXY` | Off by default; explicit trusted ingress address/subnet if needed |
+| `TRUST_PROXY` | Off by default outside production; production must include `127.0.0.1`, the same-host proxy (A07), and may add upstream proxy addresses/subnets |
 | `MONGODB_TEST_URI` | Dedicated local/CI test database connection, separate from application data |
 
 Keep fixed policy constants in the contracts/config modules rather than adding environment knobs for every decision. Fail startup for missing or unsafe configuration; never silently fall back to an in-memory database. No JWT signing secret is needed for this opaque-session design.
