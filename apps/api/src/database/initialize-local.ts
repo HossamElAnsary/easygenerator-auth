@@ -22,7 +22,9 @@ async function initializeLocal(): Promise<void> {
   }
 
   const root = fileURLToPath(new URL('../../../../', import.meta.url));
-  const deadline = Date.now() + 30_000;
+  // A fresh container on a small CI runner can be slow both to start mongod
+  // and to start each mongosh probe, so allow for both before giving up.
+  const deadline = Date.now() + 60_000;
   let reachable = false;
   while (Date.now() < deadline) {
     const probe = spawnSync(
@@ -39,7 +41,7 @@ async function initializeLocal(): Promise<void> {
         '--eval',
         'quit(db.adminCommand({ping:1}).ok === 1 ? 0 : 1)',
       ],
-      { cwd: root, stdio: 'ignore', timeout: 3000 },
+      { cwd: root, stdio: 'ignore', timeout: 15_000 },
     );
     if (probe.status === 0) {
       reachable = true;
