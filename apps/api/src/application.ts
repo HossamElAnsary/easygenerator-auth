@@ -115,7 +115,9 @@ function serveWebApplication(webDirectory: string): express.RequestHandler {
       // Relative to `root`: without one, send treats a dot-directory anywhere
       // in the install path as a hidden file and answers 404.
       res.sendFile('index.html', { root: webDirectory }, (error) => {
-        if (error && !res.headersSent) res.status(500).end();
+        if (!error) return;
+        if (res.headersSent) res.destroy();
+        else res.status(500).end();
       });
     });
   };
