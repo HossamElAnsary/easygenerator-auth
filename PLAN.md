@@ -2,7 +2,7 @@
 
 Baseline: **v1.3 — 2026-10-21** (v1.2 of 2026-10-20 plus B07, a Docker-only run, and a restructured README)
 
-Status: **M1 foundation, M2 authentication API, M3 browser journey, M4 quality and CI, and M5 submission readiness are complete, with evidence recorded in Delivery and Verification. M6 made the GitHub repository public and verified it, and CI passes on the published revision. Baseline v1.3 adds M7, a Docker-only run and a shorter README, before the recruiter handoff; M7 is planned, and the project is not submitted.**
+Status: **M1 foundation, M2 authentication API, M3 browser journey, M4 quality and CI, and M5 submission readiness are complete, with evidence recorded in Delivery and Verification. M6 made the GitHub repository public and verified it, and CI passes on the published revision. Baseline v1.3 added M7, a Docker-only run and a shorter README, which is complete and verified. The project is ready for handoff; it is not submitted until the recruiter link handoff is performed.**
 
 ## Objective
 
@@ -50,7 +50,7 @@ Agent working instructions live in [AGENTS.md](AGENTS.md). This plan and its lin
 | Signup completion | Redirect to signin; no automatic session | Makes the two required flows explicit |
 | Protected resource | `GET /api/auth/me` | Supplies authenticated user data and enforces backend access |
 | Selected extras | Logout, focused tests, basic CI, safe logs, Markdown API documentation, Docker-only run (v1.3) | Useful evidence of quality without a larger product; the Docker run was the user's request |
-| Docker-only run | `docker compose up --build` runs MongoDB, the API serving the compiled UI, and a front proxy, with no host Node; a loopback preview, not a deployment | User request (v1.3); Architecture A12 keeps the loopback, proxy-trust, and replica-set contracts unchanged |
+| Docker-only run | `docker compose up --wait` runs MongoDB, the API serving the compiled UI, and a front proxy, with no host Node; a loopback preview, not a deployment | User request (v1.3); Architecture A12 keeps the loopback, proxy-trust, and replica-set contracts unchanged |
 | Delivery topology | Same-origin browser UI and `/api`; one API process; MongoDB | Keeps cookie and origin behavior explicit |
 | Submission | Public GitHub code repository and recruiter handoff | Required final outcome; outside the current M1 scope |
 
@@ -65,7 +65,7 @@ Detailed values and behavior are defined in Architecture and Experience.
 - README and AI.md describe the actual implementation and its limitations; selected CI checks pass for the submitted revision.
 - The public repository is verified and its link has actually been handed to the recruiter when submission is performed. “Ready to submit” and “submitted” are distinct states.
 
-M1 establishes the executable foundation, M2 the authentication API, M3 the browser journey, and M4 the accessibility, production-configuration, and security reviews plus the CI workflow, verified with direct API/Mongo tests, Chromium, and local workflow replays. M5 followed the README from a clean clone, fixed what that walkthrough and an independent review found, and reconciled every requirement with its evidence. M6 made the repository public, verified it from a logged-out view, and confirmed the published revision's passing CI run; the recruiter handoff waits for the user's instruction. Production certification and submission are not claimed. See Verification for the exact completed and Pending checks.
+M1 establishes the executable foundation, M2 the authentication API, M3 the browser journey, and M4 the accessibility, production-configuration, and security reviews plus the CI workflow, verified with direct API/Mongo tests, Chromium, and local workflow replays. M5 followed the README from a clean clone, fixed what that walkthrough and an independent review found, and reconciled every requirement with its evidence. M6 made the repository public, verified it from a logged-out view, and confirmed the published revision's passing CI run; M7 added a Docker-only run (`docker compose up --wait`, verified from a clean clone without Node and in CI) and a shorter README; the recruiter handoff waits for the user's instruction. Production certification and submission are not claimed. See Verification for the exact completed and Pending checks.
 
 ## Planning exit review
 
@@ -76,4 +76,4 @@ M1 establishes the executable foundation, M2 the authentication API, M3 the brow
 - [x] Define work order, measurable acceptance checks, evidence tracking, and change control.
 - [x] Review the documents for coverage and consistency.
 
-Planning created no application files, dependencies, services, Git repository, or deployment. The authorized M1–M5 work established the local foundation, authentication API, browser journey, quality/CI gate, and submission readiness; the authorized part of **M6: Submission** made the repository public. The user then added **M7: Docker-only run and README** (baseline v1.3), which precedes the recruiter handoff; the handoff needs the user's explicit instruction. The baseline is v1.3, with the M2 contract clarifications and the M4 configuration clarifications recorded in Delivery's change log; exact tooling pins and local setup decisions are recorded in Delivery and README.
+Planning created no application files, dependencies, services, Git repository, or deployment. The authorized M1–M5 work established the local foundation, authentication API, browser journey, quality/CI gate, and submission readiness; the authorized part of **M6: Submission** made the repository public. The user then added **M7: Docker-only run and README** (baseline v1.3), now complete and verified; the recruiter handoff needs the user's explicit instruction. The baseline is v1.3, with the M2 contract clarifications and the M4 configuration clarifications recorded in Delivery's change log; exact tooling pins and local setup decisions are recorded in Delivery and README.

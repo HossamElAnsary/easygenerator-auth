@@ -4,7 +4,7 @@ A small full-stack authentication application. Visitors create an account, sign 
 
 ## Quick start with Docker
 
-You need only Docker with Compose v2: Docker Desktop, or Docker Engine with the Compose plugin. Node is not required. Verified with Docker 28.0 and Compose 2.33.
+You need only Docker with Compose v2: Docker Desktop, or Docker Engine with the Compose plugin. Node is not required. Verified with Docker 28.0 and Compose 2.33 to 2.38.
 
 ```sh
 git clone https://github.com/HossamElAnsary/easygenerator-auth.git
@@ -125,7 +125,7 @@ The decisions and their reasons are in [docs/plan/architecture.md](docs/plan/arc
 ## Limitations
 
 - No deployed HTTPS environment exists. Production mode was exercised locally, including behind a TLS proxy.
-- Browser tests cover Chromium only. The Docker stack is verified on macOS (arm64), not Windows.
+- Browser tests cover Chromium only. The Docker stack is verified on macOS (arm64) locally and on Linux (amd64) in CI, not on Windows.
 - Rate-limit counters live in memory in one process. Docker Desktop may count every local browser as one client.
 - Signup reveals whether an email is already registered, a deliberate trade-off.
 - The single-node database has no redundancy.

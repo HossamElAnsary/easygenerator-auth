@@ -24,12 +24,21 @@ Statuses: **Planned**, **In progress**, **Verified**, **Blocked**. Blocked entri
 | M3 — Browser journey | M2 contract; UI shell may start after M1 | Three pages, session states, errors, and complete browser journey work | Verified: T03 browser parity, T09, T10; initial T11 review recorded (full T11 remains Pending M4) |
 | M4 — Quality gate | M2, M3 | Meaningful integration/browser checks, responsive/accessibility review, safe logs, production build review, and CI are complete | Verified locally: T01–T11 pass; T12 runtime/build and T16 code/security portions pass; T13 workflow review, local replays, and first remote runs done (green on `719be13`); the submitted revision's run is M6 |
 | M5 — Submission ready | M4 | Fresh-checkout README walkthrough, accurate AI record, evidence review, and publication-ready tracked files | Verified locally: T01–T12, T14, T16 pass; every requirement except R09 and B03 has passing evidence. Private CI run #6 exposed MongoDB 8.0's refusal of the runners' new kernel, fixed by moving to 7.0.45; later runs pass. T13's submitted-revision run and T15 are M6 |
-| M6 — Submission | M5; authorized submission action and destination details | Public GitHub revision verified and recruiter link handoff actually performed | In progress: publication done. The repository is public and verified logged out, and T13 passed for `6b68db7` (run #10) and `f7776e8` (run #11). Under v1.3 the recruiter handoff (T15) follows M7, then waits for the user's instruction and the recipient |
-| M7 — Docker-only run and README | M6 publication; baseline v1.3 | B07: Dockerfiles for the MongoDB, application, and proxy images and one Compose file that runs the whole application without host Node (A12). R08/B05: a short README in newcomer order, with the API contract in `docs/api.md` and development details in `docs/development.md`. Exit: T17 passes; T13, T14, and T16 pass again on M7's head; T01–T12 still pass | Planned |
+| M6 — Submission | M5; authorized submission action and destination details | Public GitHub revision verified and recruiter link handoff actually performed | In progress: publication done. The repository is public and verified logged out, and T13 passed for `6b68db7` (run #10) and `f7776e8` (run #11). M7 is verified, so the recruiter handoff (T15) now waits only for the user's instruction and the recipient |
+| M7 — Docker-only run and README | M6 publication; baseline v1.3 | B07: Dockerfiles for the MongoDB, application, and proxy images and one Compose file that runs the whole application without host Node (A12). R08/B05: a short README in newcomer order, with the API contract in `docs/api.md` and development details in `docs/development.md`. Exit: T17 passes; T13, T14, and T16 pass again on M7's head; T01–T12 still pass | Verified: T17 passes; T13 (run #13, both jobs), T14, and T16 pass on `f74212e`; T01–T12 still pass |
 
 The dependency path is M1 → M2 → M3 integration → M4 → M5 → M6 publication → M7 → M6 handoff. After M1, the UI shell and backend work can run in parallel against the frozen contracts; shared-contract edits must be coordinated. Do not parallelize competing edits to the same contract or use a UI mock as proof that the backend works.
 
-## Current handoff — 2026-10-21 (baseline v1.3, M7 planned)
+## Current handoff — 2026-10-21 (after M7, ready for handoff)
+
+- **Completed:** M0–M5, M6's publication, and M7. M7 is `b595ee7` (Docker files, Compose, CI), `1cb61c4` (README, `docs/api.md`, `docs/development.md`), `80446ee` (independent-review fixes), and `f74212e` (a troubleshooting note), plus its evidence commit, all on the public `origin/main`. Someone with only Docker runs `docker compose up --wait` and opens `http://localhost:8080`. T01–T14, T16, and T17 pass; run #13 passed both CI jobs on `f74212e`. The evidence commit's own run is reported in the M7 handoff message.
+- **Unfinished:** T15. The M6 recruiter text is superseded; the M7 result has the re-prepared message, which names the head SHA given in the M7 handoff message. Nothing was sent. The state is **ready for handoff**, not **submitted**.
+- **Decisions to retain:** everything in the earlier handoffs, plus A12 as built: the documented command is `docker compose up --wait` (not `--build`, which recreates containers on Docker Desktop); images keep Compose's `<project>-<service>` names and are never pulled; `mongodb-init` builds its own copy of the MongoDB image; health checks use a plain 10-second interval (no `start_interval`, which needs Engine 25+); the proxy streams request bodies.
+- **Runtime and test setup:** as before, plus: the default Compose project now builds four local images; only `mongodb` runs after M7's cleanup, and its volume holds no application data.
+- **Blockers:** the handoff needs the user's explicit instruction and the recipient. Nothing else is open.
+- **Next concrete task:** when instructed, send the M7 message to the named recipient, then record the date, channel, and recipient role (not the address) in T15, mark R09 and M6 accordingly, and set the state to **submitted**.
+
+## Previous handoff — 2026-10-21 (baseline v1.3, M7 planned)
 
 - **Completed:** M0–M5 and M6's publication (previous handoff below). The M6 record commit `f7776e8` is the public head, and its push run #11 passed every step on `ubuntu-24.04` image 20261018.339.1 with kernel 7.0.0-1017-azure.
 - **Changed:** the user asked how someone without Node runs the project. Today nobody can: Docker runs only MongoDB, and everything else needs Node 24.22.0 and npm 12.2.0. The user requested a Dockerfile per service, one Compose file that builds and runs everything, and a shorter README in the right order. Baseline v1.3 adds B07 (Requirements), A12 (Architecture), T17 and extended T13, T14, and T16 (Verification), and M7 below. The recruiter handoff now follows M7, so the M6 message prepared earlier is superseded; it is re-prepared with M7's head SHA.
@@ -321,6 +330,48 @@ Requested by the user on 2026-10-21 after M6's publication. Baseline v1.3 adds B
 
 Exit evidence: T17 passes; T13, T14, and T16 pass on M7's head; T01–T12 still pass. A Docker run that works only on the author's machine, or a README path not walked from a clean clone, does not close M7.
 
+### M7 result — 2026-10-21
+
+The user approved the v1.3 plan ("go-ahead"), which covered implementing M7 and pushing it after `npm run check` passed. The tasks ran in the documented order; exact commands and results are in Verification's M7 evidence.
+
+1. **Baseline.** `npm run check` passed at `23a6e5d` before any edit.
+2. **MongoDB image.** `docker/mongodb/Dockerfile` copies `mongo-init.js` and a JavaScript wait into the pinned image, and replaces the bind mount. The existing container was recreated from it on the same volume, with its replica-set configuration and a marker intact, and `db:ready` still works.
+3. **Build inputs.** `.dockerignore` keeps the context to tracked sources, which was verified by listing the actual context.
+4. **Application image.** `docker/app/Dockerfile` builds from the lockfile with the pinned Node and npm. Its runtime stage has only compiled output and the API's production dependencies, runs as `node`, and carries no package manager.
+5. **Proxy and Compose.** `docker/proxy` (unprivileged nginx) forwards everything to `127.0.0.1:3000`, overwrites `X-Forwarded-For`, and streams bodies. `compose.yaml` adds `mongodb-init`, `app`, and `proxy` in `mongodb`'s network namespace, with loopback ports and `APP_PORT`.
+6. **Verification.** T17 passed locally and from a clean clone through a Node-free Docker CLI.
+7. **CI.** The database step became `docker compose up -d mongodb`, and a parallel `docker` job runs the quick start and a curl smoke test. Run #13 passed both jobs.
+8. **Documentation.** README was rewritten (8.7 KB, from 21.5 KB); `docs/api.md` and `docs/development.md` took over the API contract and the details; CLAUDE.md and AGENTS.md were updated.
+9. **Review and gates.** An independent review found one Medium and six Low issues, all fixed. Both README paths were walked from a clean clone, and `npm run check` passed there, in the checkout, and with the stack running.
+
+Decisions made during implementation (change log below):
+
+- **Documented command `docker compose up --wait`.** On Docker Desktop's containerd image store, BuildKit's default provenance attestation gives every build a new image ID, so `up --build` recreated every container even with nothing changed. Compose 2.33 has no setting to turn the attestation off. `up --wait` builds missing images and leaves running containers alone; `--build` is documented for after pulling changes.
+- **Compose's default image names.** Registry-style names such as `easy-generator/app:local` sit in a Docker Hub namespace someone else could claim, and Compose may pull a missing image under such a name. `<project>-<service>` names are built locally and never pulled. `mongodb-init` therefore builds its own copy of the MongoDB image (same cached layers), which also makes the stack work under any project name. A clean-clone run had passed only because the default project's image happened to exist.
+- **No `start_interval`.** It needs Docker Engine 25 or later, which older distribution packages lack. A plain 10-second interval costs about 10 seconds of startup.
+- **Streamed request bodies.** With nginx's default buffering, the proxy read every body up to 1 MiB before the API's request controls ran. With buffering off, a rejected 900 KB request got its JSON 403 in 7 ms. Bodies over 1 MiB still get nginx's HTML 413, which is documented rather than custom-handled.
+
+**Final recruiter message** (prepared; **not sent**; `<SHA>` is the head of `main` after the M7 evidence commit, given in the M7 handoff message):
+
+> Subject: Full Stack Test Task submission
+>
+> Hi [recruiter name],
+>
+> Here is my submission for the Full Stack Test Task: https://github.com/HossamElAnsary/easygenerator-auth
+>
+> The submitted revision is commit `<SHA>` on `main`, and its GitHub Actions run passes.
+>
+> It implements signup (email, name, and password, validated on both the frontend and the backend), signin, and an authenticated page that shows "Welcome to the application.", using React with TypeScript, NestJS, and MongoDB. `GET /api/auth/me` is the protected endpoint; sessions are opaque, stored server-side, and carried in an HttpOnly cookie. Logout, API integration and real-browser tests, GitHub Actions CI, safe request logs, and Markdown API documentation are included.
+>
+> With Docker installed, `docker compose up --wait` runs the whole application at http://localhost:8080, with no Node setup needed. The README also covers local development with the pinned Node and npm versions, and AI.md records where AI assisted, which approaches worked, and where its output was corrected.
+>
+> Thank you for your time. I am happy to walk through any part of it.
+>
+> Best regards,
+> Hossam
+
+**Remaining limitations:** those in the M5 result, except that the repository is public and T13 passes; plus, for the Docker stack: Windows is unverified, Docker Desktop may count every local browser as one rate-limit client, a body over 1 MiB gets nginx's HTML 413, and the stack is a loopback HTTP preview, not a deployment.
+
 ## Command contract to implement
 
 These are milestone-spanning command interfaces. M1 implements install, database setup, development, lint/typecheck/tests, builds, preview, and production startup. `check` and `test:e2e` are implemented at M3; `check:foundation` runs lint/typecheck/workspace tests/build without browsers. README lists actual available commands.
@@ -328,9 +379,9 @@ These are milestone-spanning command interfaces. M1 implements install, database
 | Command | Expected behavior |
 | --- | --- |
 | `npm ci` | Install the locked workspace dependencies |
-| `docker compose up -d` | Start the local MongoDB server with replica-set configuration (until M7) |
+| `docker compose up -d` | Until M7: start the local MongoDB server with replica-set configuration. From M7 it starts the whole stack |
 | `docker compose up -d mongodb` | From M7: start only the MongoDB service for the Node workflow and CI |
-| `docker compose up --build --wait` | From M7: build the images and run the whole application at `http://localhost:8080` without host Node (A12) |
+| `docker compose up --wait` | From M7: build missing images and run the whole application at `http://localhost:8080` without host Node (A12) |
 | `npm run db:ready` | Initialize the known local/test replica set idempotently if needed and wait for a writable primary; never reconfigure a managed database |
 | `npm run dev` | Build contracts initially, then watch contracts/API/web with correct startup order |
 | `npm run lint` | Check code without modifying files |
@@ -395,5 +446,8 @@ Planning estimate revised with the explicit database setup: M1 45–75 minutes; 
 | 2026-10-21 | Start authorized M6 from the clean `6b68db7` handoff; make `HossamElAnsary/easygenerator-auth` public and apply the description prepared in M5 | User authorized the visibility change, the description, and pushing M6 documentation after `npm run check`; sending the recruiter message was not authorized. R09/B03, T13/T15. Re-scan and the gate preceded publication; no code, configuration, scope, or other setting change | Public and verified logged out; T13 Pass (run #10 on `6b68db7`) |
 | 2026-10-21 | Record M6 as **ready for handoff** | T15 waits for the user's instruction and recipient; the final recruiter message is prepared with the public URL and the submitted SHA, and is not sent. The record commit's own CI run is reported in the handoff message | Ready for handoff; not submitted |
 | 2026-10-21 | Baseline v1.3: add B07, a Docker-only run (Architecture A12, check T17), and restructure README (R08, B05; T14). Insert M7 before the recruiter handoff | The user asked how someone without Node runs the project (today they cannot), and requested a Dockerfile per service, one Compose file that builds and runs everything, and a shorter README in the right order. Design: an `app` image (the API serving the compiled UI, per A02), a `proxy` image (A02's reverse proxy over HTTP), and a `mongodb` image with the init script copied in, sharing one network namespace, so the loopback listener, `TRUST_PROXY=127.0.0.1`, and the `localhost:27018` member stay unchanged. Rejected: an nginx-served SPA beside an API with `SERVE_WEB=false` (it duplicates the reviewed static-serving and CSP rules outside the browser suite, and production requires `SERVE_WEB=true`); configurable listen and replica-set hosts (they weaken A02/A07 and break host-side discovery). The Node workflow and CI change from `docker compose up -d` to `docker compose up -d mongodb`. T13, T14, and T16 are extended; T15 now follows M7, and the M6 recruiter text is superseded | Planning only; nothing implemented |
+| 2026-10-21 | Start authorized M7 from `23a6e5d` | The user approved the v1.3 plan ("go-ahead"). Baseline gate passed before any edit; worked in the checkout because the session-start collision notice was stale. B07, R08, B05; T13, T14, T16, T17 | Implementation in progress |
+| 2026-10-21 | Clarify A12 and T17 during M7: the documented command is `docker compose up --wait` instead of `up --build --wait`; images keep Compose's default `<project>-<service>` names, and `mongodb-init` builds its own copy of the MongoDB image; health checks drop `start_interval`; the proxy streams request bodies | On Docker Desktop's containerd store, the default provenance attestation gives each build a new image ID, so `--build` recreated every container and T17's "a repeated run changes nothing" could not hold; Compose 2.33 cannot disable the attestation. Registry-style names could be pulled from a namespace someone else controls, and the shared image name broke other project names. `start_interval` needs Engine 25+. Buffering made nginx read bodies before A07's controls ran. No route, response, cookie, schema, rate-limit, or database-policy change; T17's command wording updated with this entry | Implemented in `b595ee7` and `80446ee`; verified (Verification M7 evidence) |
+| 2026-10-21 | Close M7 | T17 passes; T13 (run #13, both jobs), T14, and T16 pass on `f74212e`; T01–T12 still pass. The recruiter message is re-prepared, not sent | Verified; ready for handoff |
 
 Future entries should include the decision changed, rationale, affected requirement/check IDs, and validation impact. Do not overwrite history to conceal a scope reduction.
