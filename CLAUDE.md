@@ -22,6 +22,7 @@ First-time setup needs Docker: `npm ci`, `cp .env.example .env`, `docker compose
 - `npm run lint`: ESLint plus `prettier --check .`, which also fails on unformatted Markdown; `npm run format` fixes it. The planning documents (`AGENTS.md`, `PLAN.md`, `AI.md`, `docs/plan/`) are deliberately Prettier-ignored, so preserve their layout by hand.
 - `npm run typecheck`, `npm test`, `npm run build`: each builds `@easy-generator/contracts` first.
 - `npm run build && npm run preview`: the compiled stack on `http://localhost:3000`, in development mode over loopback HTTP.
+- CI: `.github/workflows/ci.yml` runs the same steps on GitHub Actions (pinned Node/npm, Compose MongoDB plus `db:ready`, lint, typecheck, tests, `test:e2e`) with read-only permissions. Keep it in step with `npm run check`, and pin actions to full commit SHAs.
 
 Single tests (arguments after `--` go to Vitest):
 

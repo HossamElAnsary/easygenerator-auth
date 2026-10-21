@@ -1,0 +1,67 @@
+# Basic CI (Requirements B03, Verification T13): the local executable gate on
+# the pinned runtime and MongoDB replica set. No deployment, secrets, or writes.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, typecheck, test, build, browser journey
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js from .nvmrc
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Install the pinned npm
+        run: |
+          npm install --global npm@12.2.0
+          test "$(node --version)" = "v$(cat .nvmrc)"
+          test "$(npm --version)" = 12.2.0
+
+      # compose.yaml pins mongo:8.0.32 by digest and runs the single-node
+      # replica set on loopback port 27018; the example env names it.
+      - name: Start MongoDB
+        run: |
+          cp .env.example .env
+          docker compose up -d
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Initialize the replica set and wait for a writable primary
+        run: npm run db:ready
+
+      - name: Lint and formatting
+        run: npm run lint
+
+      - name: Strict typecheck
+        run: npm run typecheck
+
+      - name: Workspace tests against isolated databases
+        run: npm test
+
+      - name: Install Chromium for Playwright
+        run: PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npx playwright install --with-deps chromium
+
+      - name: Production build and browser journey
+        run: npm run test:e2e
