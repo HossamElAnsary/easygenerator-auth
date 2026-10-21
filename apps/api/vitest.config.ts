@@ -15,5 +15,11 @@ export default defineConfig({
     environment: 'node',
     include: ['test/**/*.test.ts'],
     setupFiles: ['test/setup.ts'],
+    // Cases drive the real app: Argon2 hashing plus journaled majority writes
+    // to MongoDB. Where test workers and the database share a few CPUs, as on
+    // a CI runner, a correct case can outlast Vitest's 5 s default; the
+    // product's own 5 s database budgets are unchanged.
+    testTimeout: 20_000,
+    hookTimeout: 30_000,
   },
 });
