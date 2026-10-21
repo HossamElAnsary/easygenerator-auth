@@ -1,6 +1,6 @@
 # Easy Generator authentication task
 
-Implementation covers **M1 — Foundation**, **M2 — Authentication API**, and **M3 — Browser journey** of [baseline v1.2](PLAN.md). Visitors can create an account, sign in, see exactly `Welcome to the application.`, restore their session on refresh, and sign out. The React/TypeScript UI uses the NestJS API and MongoDB-backed HttpOnly sessions. See [Delivery](docs/plan/delivery.md) and [Verification](docs/plan/verification.md) for local evidence and remaining gates. CI, final quality/release review, and publication remain future milestones.
+Implementation covers **M1 — Foundation**, **M2 — Authentication API**, **M3 — Browser journey**, and **M4 — Quality and CI** of [baseline v1.2](PLAN.md). Visitors can create an account, sign in, see exactly `Welcome to the application.`, restore their session on refresh, and sign out. The React/TypeScript UI uses the NestJS API and MongoDB-backed HttpOnly sessions. See [Delivery](docs/plan/delivery.md) and [Verification](docs/plan/verification.md) for local evidence and remaining gates. The GitHub Actions workflow has not run remotely yet (there is no remote repository); release preparation and publication remain M5–M6.
 
 ## Prerequisites and versions
 
@@ -48,7 +48,7 @@ The example database is local and unauthenticated, published on loopback only. I
 | `npm run check`            | Complete local executable gate, including browser tests and builds                                     |
 | `npm run check:foundation` | Run lint, typecheck, workspace tests, and build (excludes browsers)                                    |
 
-`npm run test:e2e` builds the compiled stack, then runs pinned Playwright **1.64.1** with Chromium. `npm run check` runs lint/format, strict typecheck (including browser tests), workspace tests, and `test:e2e` (including builds). CI and the final quality/release gate remain M4/M5.
+`npm run test:e2e` builds the compiled stack, then runs pinned Playwright **1.64.1** with Chromium. `npm run check` runs lint/format, strict typecheck (including browser tests), workspace tests, and `test:e2e` (including builds).
 
 Install the pinned browser once after `npm ci`, from the repository root:
 
@@ -66,6 +66,12 @@ Stop the development/preview server before browser tests: the suite owns loopbac
 Tests require the running replica set and `MONGODB_TEST_URI` from `.env.example`; missing database prerequisites fail the suite instead of silently skipping integration checks. The marker database must be named `easy_generator_test` and differ from the application database. Each test application creates `easy_generator_test_<random UUID>` and can drop only that exact owned database. API tests drive the real Nest HTTP pipeline and MongoDB; driver faults are injected only to test failure paths, using the driver's own error types. Web tests use jsdom and mocked HTTP. Browser tests in `tests/e2e` run the real compiled API/SPA; route interception is limited to deliberate outage/race cases. They reuse the validated isolated-database helper. The e2e fixture imports compiled Nest code because Playwright's TypeScript transform does not emit Nest DI metadata.
 
 To run one test file or a subset by name, pass Vitest arguments after `--`, for example `npm test -w @easy-generator/api -- test/signin.integration.test.ts -t 'fresh token'`. Workspace-level runs skip the contracts build, so run `npm run build -w @easy-generator/contracts` first after changing `packages/contracts`.
+
+Every browser case also fails if the page reports a Content Security Policy violation. The served CSP has no `'unsafe-eval'`, so the web entry imports `configure-zod.ts` first to run Zod without its `new Function` fast path.
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs the same gate on GitHub Actions for pushes to `main`, pull requests, and manual runs. It selects Node from `.nvmrc` and npm 12.2.0 (both asserted), starts the Compose MongoDB, installs with `npm ci`, initializes the replica set with `npm run db:ready`, then runs `npm run lint`, `npm run typecheck`, `npm test`, installs Chromium with its OS packages, and runs `npm run test:e2e` (production build plus browser journey). The job has read-only repository permissions, does not persist the checkout token, uses no secrets, and deploys nothing. Actions are pinned to full commit SHAs. No remote repository exists yet, so the workflow has been checked and replayed locally (see Verification) but has not run on GitHub.
 
 ## Authentication API
 
@@ -106,28 +112,34 @@ curl -s -b "$JAR" "$ORIGIN/api/auth/me" # 401: the session was revoked
 
 Use `.env.example` as the reference. Real `.env` files, local source briefs, dependencies, generated output, logs, database files, and test artifacts are ignored. Never put `MONGODB_URI` or credentials in `VITE_*` settings.
 
-| Setting            | Purpose                                                            |
-| ------------------ | ------------------------------------------------------------------ |
-| `NODE_ENV`         | `development`, `test`, or `production`                             |
-| `PORT`             | API port, default 3000                                             |
-| `MONGODB_URI`      | Required database URI with replica-set discovery                   |
-| `APP_ORIGIN`       | Exact public origin without path; production requires HTTPS        |
-| `SERVE_WEB`        | `false` with Vite; `true` for built preview/production             |
-| `TRUST_PROXY`      | Off by default; explicit ingress address/subnet only               |
-| `MONGODB_TEST_URI` | Dedicated test URI; generated test databases keep cleanup isolated |
+| Setting            | Purpose                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`         | `development`, `test`, or `production`                                                                      |
+| `PORT`             | API port, default 3000                                                                                      |
+| `MONGODB_URI`      | Required database URI with replica-set discovery and no concern, read-preference, retry, or timeout options |
+| `APP_ORIGIN`       | Exact origin without path: a loopback host outside production, HTTPS in production                          |
+| `SERVE_WEB`        | `false` with Vite; `true` for built preview/production                                                      |
+| `TRUST_PROXY`      | Off by default; production must include `127.0.0.1`, the same-host proxy, and may add upstream hops         |
+| `MONGODB_TEST_URI` | Dedicated test URI; generated test databases keep cleanup isolated                                          |
 
 Startup validates configuration and required assets, connects to a writable replica-set primary, then creates and verifies the unique `users.email`, unique `sessions.tokenHash`, and TTL `sessions.expiresAt` indexes before listening. Existing indexes are never dropped; a conflicting definition stops startup. Database policy uses primary/majority reads, majority and journal-acknowledged writes (5-second write concern budget), 5-second server selection/read budgets, and a 10-second socket timeout. Session checks use a primary linearizable read bounded to 5 seconds, which costs about 0.1 s per authenticated request on the local set. Passwords use Argon2id (19 MiB, 2 iterations, parallelism 1), measured at about 13 ms per hash on an Apple M4 Pro.
 
-`npm run build && npm run preview` uses development mode over loopback HTTP: the `session` cookie without `Secure`, and security headers without HSTS or `upgrade-insecure-requests`. Production requires an external replica set and an HTTPS reverse proxy for the configured origin; explicit trusted ingress configuration and preventing direct public API access remain deployment responsibilities. Production cookie and header behavior is covered by integration tests in production mode, but no deployed HTTPS environment, failover, backup, or production security certification is claimed.
+`npm run build && npm run preview` uses development mode over loopback HTTP: the `session` cookie without `Secure`, and security headers without HSTS or `upgrade-insecure-requests`. That is why development, test, and preview modes accept only a loopback `APP_ORIGIN`.
+
+**Production topology.** The API listens on `127.0.0.1` only, so production runs behind an HTTPS reverse proxy on the same host (or network namespace). The proxy terminates TLS for the public origin, redirects HTTP to HTTPS, and overwrites `X-Forwarded-For` with the client address. Production also needs an external replica set. Run `npm run build`, then `npm run start:prod` with `APP_ORIGIN` set to the public HTTPS origin, `MONGODB_URI` naming the replica set, and `TRUST_PROXY=127.0.0.1` (plus any upstream proxy addresses the local proxy forwards for). Startup refuses production without that trust: every client would share the proxy's address and therefore one rate-limit bucket. Startup failures print one generic line by design, so check these settings first. Hashed assets are revalidated (`max-age=0` with ETags) rather than cached long-term.
+
+Integration tests cover production cookies and headers, and M4 drove production mode in Chromium through a local TLS-terminating proxy with a throwaway certificate (see Verification). That is not a deployed environment: no deployed HTTPS, failover, backup, or production security certification is claimed.
 
 ## Structure and next work
 
 - `apps/web`: typed fetch client, stable session QueryClient, auth coordinator, route guards, shared accessible fields, signup/signin/welcome pages, CSS Modules, rendering error boundary, and focused state/race tests.
 - `apps/api`: Nest modules for auth (controller, service, Argon2 hasher, session guard and cookie), users, and sessions; the HTTP pipeline (request IDs, mutation controls, security headers, rate limits, safe errors, logs); configuration and database startup; integration tests in `apps/api/test`.
 - `packages/contracts`: browser/server-neutral strict Zod schemas for health, signup/signin/logout requests, public users, and error codes.
+- `tests/e2e`: the real Chromium suite and its isolated-server fixture.
+- `.github/workflows/ci.yml`: the GitHub Actions gate.
 - `docs/plan`: owned contracts, milestone state, and acceptance evidence.
 - `AI.md`: actual assistance and corrections.
 
-The next milestone is **M4 — Quality and CI**. M3 includes an initial keyboard/responsive review, with native browser zoom and actual password-manager behavior still to review. No deployed HTTPS validation or public submission is claimed.
+The next milestone is **M5 — Submission ready**: a fresh-checkout walkthrough of this README, the final documentation and tracked-artifact review, and handoff preparation. M4 completed the accessibility review in Chromium (native 200% and 400% zoom, its built-in password manager, an automated WCAG scan) and the production-mode review. It also added CI and a security review whose findings are fixed. The CI workflow has not run on GitHub, and no deployed HTTPS environment or public submission is claimed.
 
 Frontend state follows Architecture A11: React Hook Form owns local fields; shared Zod resolvers normalize inputs; Query caches only the public user or null on a confirmed 401. Other session failures mean unavailable and hide protected content. Focus/reconnect/navigation checks preserve mounted public forms. Signup/signin are awaited coordinator actions, keeping passwords out of query/mutation caches; credential-free logout uses a mutation. Requests time out after 15 seconds and never automatically retry POSTs. An aborted request may still have completed on the server; use manual recovery. Session checks never modify cookies. A rendering failure offers Reload page. Read [AGENTS.md](AGENTS.md) before changing the baseline.

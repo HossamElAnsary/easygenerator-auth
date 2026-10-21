@@ -2,7 +2,7 @@
 
 Baseline: **v1.2 — 2026-10-20**
 
-Status: **M1 foundation, M2 authentication API, and M3 browser journey are implemented with local evidence recorded in Delivery and Verification. M4 quality and CI is next.**
+Status: **M1 foundation, M2 authentication API, M3 browser journey, and M4 quality and CI are implemented with local evidence recorded in Delivery and Verification. The CI workflow has not run remotely (no remote repository exists). M5 submission readiness is next.**
 
 ## Objective
 
@@ -64,7 +64,7 @@ Detailed values and behavior are defined in Architecture and Experience.
 - README and AI.md describe the actual implementation and its limitations; selected CI checks pass for the submitted revision.
 - The public repository is verified and its link has actually been handed to the recruiter when submission is performed. “Ready to submit” and “submitted” are distinct states.
 
-M1 establishes the executable foundation, M2 the authentication API, and M3 the browser journey, verified with direct API/Mongo tests and Chromium. The final security/CI review, production certification, publication, and submission are not claimed. See Verification for the exact completed and Pending checks.
+M1 establishes the executable foundation, M2 the authentication API, M3 the browser journey, and M4 the accessibility, production-configuration, and security reviews plus the CI workflow, verified with direct API/Mongo tests, Chromium, and local workflow replays. A remote CI run, production certification, publication, and submission are not claimed. See Verification for the exact completed and Pending checks.
 
 ## Planning exit review
 
@@ -75,4 +75,4 @@ M1 establishes the executable foundation, M2 the authentication API, and M3 the 
 - [x] Define work order, measurable acceptance checks, evidence tracking, and change control.
 - [x] Review the documents for coverage and consistency.
 
-Planning created no application files, dependencies, services, Git repository, or deployment. The authorized M1–M3 implementations established the local foundation, authentication API, and browser journey; the next milestone is **M4: Quality and CI**. The baseline remains v1.2 with the M2 contract clarifications recorded in Delivery's change log; exact tooling pins and local setup decisions are recorded in Delivery and README.
+Planning created no application files, dependencies, services, Git repository, or deployment. The authorized M1–M4 implementations established the local foundation, authentication API, browser journey, and quality/CI gate; the next milestone is **M5: Submission ready**. The baseline remains v1.2 with the M2 contract clarifications and the M4 configuration clarifications recorded in Delivery's change log; exact tooling pins and local setup decisions are recorded in Delivery and README.
