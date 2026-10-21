@@ -1,34 +1,8 @@
 /**
- * Typed failures. Services and middleware throw these; ApiExceptionFilter maps
- * them to the safe error contract (Architecture A05). None carries user input.
+ * Typed domain and dependency failures. Services throw these; the HTTP layer's
+ * ApiExceptionFilter maps them to the safe error contract (Architecture A05).
+ * None carries user input. Request-control failures live in `http/`.
  */
-
-/** Body failed the shared schema. `fields` holds field-level messages only. */
-export class RequestValidationError extends Error {
-  override readonly name = 'RequestValidationError';
-
-  constructor(readonly fields?: Readonly<Record<string, readonly string[]>>) {
-    super('The request failed validation.');
-  }
-}
-
-/** Mutation without the exact origin or the custom CSRF header. */
-export class RequestForbiddenError extends Error {
-  override readonly name = 'RequestForbiddenError';
-
-  constructor() {
-    super('The request did not meet the mutation controls.');
-  }
-}
-
-/** Mutation body that is not uncompressed JSON. */
-export class UnsupportedMediaTypeError extends Error {
-  override readonly name = 'UnsupportedMediaTypeError';
-
-  constructor() {
-    super('The request body must be JSON.');
-  }
-}
 
 /** Unknown email or wrong password; deliberately indistinguishable. */
 export class InvalidCredentialsError extends Error {

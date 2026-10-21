@@ -11,8 +11,11 @@ import {
   WEB_DIRECTORY,
 } from '../../src/application.js';
 import { validateRuntimeConfig } from '../../src/config/runtime-config.js';
-import { AppLogger, type LogRecord } from '../../src/core/app-logger.js';
-import { Clock } from '../../src/core/clock.js';
+import {
+  AppLogger,
+  type LogRecord,
+} from '../../src/infrastructure/logging/app-logger.js';
+import { Clock } from '../../src/infrastructure/clock/clock.js';
 import { isolatedDatabase } from '../test-database.js';
 
 export const TEST_ORIGIN = 'http://localhost:5173';

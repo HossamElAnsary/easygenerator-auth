@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { DependencyUnavailableError } from '../common/errors.js';
-import { AppLogger } from '../core/app-logger.js';
+import { AppLogger } from '../infrastructure/logging/app-logger.js';
 import { describeFailure } from './api-failure.js';
 import { recordErrorCode, requestIdOf } from './request-context.js';
 

@@ -8,8 +8,9 @@ const { createApplication } = (await import(
 )) as typeof import('../../apps/api/src/application.js');
 
 const { Clock } = (await import(
-  new URL('../../apps/api/dist/core/clock.js', import.meta.url).href
-)) as typeof import('../../apps/api/src/core/clock.js');
+  new URL('../../apps/api/dist/infrastructure/clock/clock.js', import.meta.url)
+    .href
+)) as typeof import('../../apps/api/src/infrastructure/clock/clock.js');
 
 type Database = ReturnType<typeof isolatedDatabase>;
 export const test = base.extend<{

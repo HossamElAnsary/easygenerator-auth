@@ -11,10 +11,10 @@ import {
   it,
   vi,
 } from 'vitest';
-import { DatabaseService } from '../src/database/database.service.js';
-import { SESSION_MODEL } from '../src/sessions/session.schema.js';
-import { USER_MODEL } from '../src/users/user.schema.js';
-import { UsersService } from '../src/users/users.service.js';
+import { DatabaseService } from '../src/infrastructure/database/database.service.js';
+import { SESSION_MODEL } from '../src/modules/sessions/session.schema.js';
+import { USER_MODEL } from '../src/modules/users/user.schema.js';
+import { UsersRepository } from '../src/modules/users/index.js';
 import {
   api,
   newAccount,
@@ -242,7 +242,7 @@ describe('uncertain and failed database writes', () => {
   it('turns unexpected failures into a safe 500 and logs only the error type', async () => {
     const secret = 'driver said: duplicate value grace@example.com';
     vi.spyOn(
-      testApp.app.get(UsersService),
+      testApp.app.get(UsersRepository),
       'findCredentialsByEmail',
     ).mockRejectedValueOnce(new TypeError(secret));
     const response = await api(testApp)

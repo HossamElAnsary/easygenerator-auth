@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { ApiErrorCode, PublicUser } from '@easy-generator/contracts';
 import type { Request, RequestHandler } from 'express';
-import type { AppLogger } from '../core/app-logger.js';
+import type { AppLogger } from '../infrastructure/logging/app-logger.js';
 import { isApiPath } from './api-paths.js';
 
 interface RequestState {

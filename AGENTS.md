@@ -44,7 +44,7 @@ The repository uses npm workspaces with one lockfile:
 | Planned location | Responsibility |
 | --- | --- |
 | `apps/web` | React/Vite UI, routing, forms, authentication state, API client, CSS Modules |
-| `apps/api` | NestJS controllers/services/guards, MongoDB through Mongoose, users and sessions |
+| `apps/api` | NestJS controllers/services/guards, MongoDB through Mongoose, users and sessions; from v1.4 a modular monolith with enforced boundaries (Engineering E02) |
 | `packages/contracts` | Shared Zod input schemas, public types, validation constants |
 | `tests/e2e` | Focused browser journeys |
 | `docker/`, `compose.yaml` | From v1.3: Dockerfiles for the MongoDB, application, and proxy images, and one Compose file that runs the whole application without host Node (Architecture A12) |

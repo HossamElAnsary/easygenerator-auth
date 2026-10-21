@@ -104,7 +104,7 @@ All routes are under `/api`. Every POST needs `Origin` equal to `APP_ORIGIN`, `X
 
 ```text
 apps/web             React UI (Vite, React Router, React Hook Form, TanStack Query)
-apps/api             NestJS API (auth, users, sessions, HTTP pipeline, startup)
+apps/api             NestJS API: modules/ (auth, users, sessions, health), http/, infrastructure/, config/
 packages/contracts   Zod schemas and types shared by the UI and the API
 tests/e2e            Playwright browser journeys
 docker/              Dockerfiles for the mongodb, app, and proxy images
