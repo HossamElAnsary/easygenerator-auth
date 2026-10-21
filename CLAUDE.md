@@ -35,6 +35,7 @@ npm test -w @easy-generator/contracts -- -t 'rejects'
 - Workspace-level runs skip the contracts build. Both apps import `packages/contracts/dist`, so after editing contracts run `npm run build -w @easy-generator/contracts` (or keep `npm run dev` running).
 - Run API tests through the npm script: it loads the root `.env`, which supplies `MONGODB_TEST_URI`, via `node --env-file-if-exists`. A plain `npx vitest` in `apps/api` does not. Database suites fail rather than skip when the replica set is unavailable.
 - Inspect data with `docker compose exec mongodb mongosh --port 27018`. The project's mongod listens only on 27018, and a bare `mongosh` connects to 27017.
+- MongoDB is pinned to 7.0.45 on purpose: 8.0 exits at startup on Linux kernels 6.19 through 7.0.13 (SERVER-121912), including GitHub's `ubuntu-24.04` runners. Do not move to 8.x until a release starts there. The volume name carries the major version, because a server cannot open files from a newer one.
 - `compose.yaml` fixes the project name (`easy-generator`) and host port 27018, so every checkout and worktree shares one container and data volume. `docker compose up -d` from another checkout recreates that container with the other path's `scripts/mongo-init.js` mount (`docker compose --dry-run up -d` shows it). For a separate replica set, stop the default container and export one distinct `COMPOSE_PROJECT_NAME` for every command, `db:ready` included; a new name gets a fresh volume. Never run `docker compose down -v` on the default project.
 
 ## How the code fits together
