@@ -126,6 +126,9 @@ export function useRequestError() {
   };
 }
 
+// setTimeout fires at once for a longer delay, so longer waits take steps.
+const MAX_TIMER_DELAY = 2 ** 31 - 1;
+
 export function useWaitUntil(until: number) {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
@@ -135,10 +138,14 @@ export function useWaitUntil(until: number) {
     // before the deadline; re-arm until the deadline has really passed.
     const wake = () => {
       const remaining = until - Date.now();
-      if (remaining > 0) timer = setTimeout(wake, remaining);
+      if (remaining > 0)
+        timer = setTimeout(wake, Math.min(remaining, MAX_TIMER_DELAY));
       else setNow(Date.now());
     };
-    timer = setTimeout(wake, Math.max(0, until - Date.now()));
+    timer = setTimeout(
+      wake,
+      Math.min(Math.max(0, until - Date.now()), MAX_TIMER_DELAY),
+    );
     return () => clearTimeout(timer);
   }, [until]);
   return until > now;
