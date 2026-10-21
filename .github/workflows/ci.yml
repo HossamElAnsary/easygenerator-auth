@@ -1,5 +1,6 @@
 # Basic CI (Requirements B03, Verification T13): the local executable gate on
-# the pinned runtime and MongoDB replica set. No deployment, secrets, or writes.
+# the pinned runtime and MongoDB replica set, plus the Docker-only run (B07).
+# No deployment, secrets, or writes.
 name: CI
 
 on:
@@ -38,14 +39,14 @@ jobs:
           test "$(node --version)" = "v$(cat .nvmrc)"
           test "$(npm --version)" = 12.2.0
 
-      # compose.yaml pins mongo:7.0.45 by digest and runs the single-node
+      # docker/mongodb pins mongo:7.0.45 by digest and runs the single-node
       # replica set on loopback port 27018; the example env names it. The
       # kernel is printed because MongoDB 8.0 refuses kernels 6.19-7.0.13.
       - name: Start MongoDB
         run: |
           uname -r
           cp .env.example .env
-          docker compose up -d
+          docker compose up -d mongodb
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
@@ -75,3 +76,51 @@ jobs:
         run: |
           docker compose ps --all
           docker compose logs --tail 60 mongodb
+
+  # Requirements B07, Verification T17: README's Docker quick start on a clean
+  # runner. Nothing here uses the runner's Node, and no image is pushed.
+  docker:
+    name: Docker-only run
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build and start the whole application
+        run: |
+          uname -r
+          docker version --format 'Docker {{.Server.Version}}'
+          docker compose version
+          docker compose up --wait
+
+      - name: Smoke-test through the proxy
+        run: |
+          origin=http://localhost:8080
+          jar=$(mktemp)
+          json=(-H "Origin: $origin" -H 'X-CSRF-Protection: 1' -H 'Content-Type: application/json')
+          account='"email":"ada@example.com","password":"Analytical-1"'
+          expect() { # <expected status> <curl arguments...>
+            local status
+            status=$(curl -s -o /dev/null -w '%{http_code}' "${@:2}")
+            echo "$status ${*: -1}"
+            test "$status" = "$1"
+          }
+          expect 200 "$origin/api/health"
+          expect 200 "$origin/signin"
+          curl -sS -D - -o /dev/null "$origin/signin" | grep -i "^content-security-policy: .*script-src 'self'"
+          expect 404 "$origin/api/unknown"
+          expect 201 "${json[@]}" -d "{\"name\":\"Ada Lovelace\",$account}" "$origin/api/auth/signup"
+          expect 200 -c "$jar" "${json[@]}" -d "{$account}" "$origin/api/auth/signin"
+          expect 200 -b "$jar" "$origin/api/auth/me"
+          expect 204 -b "$jar" -c "$jar" "${json[@]}" -d '{}' "$origin/api/auth/logout"
+          expect 401 -b "$jar" "$origin/api/auth/me"
+          expect 403 -H 'Origin: http://evil.example' -H 'X-CSRF-Protection: 1' -H 'Content-Type: application/json' -d '{}' "$origin/api/auth/logout"
+
+      - name: Show the containers after a failure
+        if: failure()
+        run: |
+          docker compose ps --all
+          docker compose logs --tail 60

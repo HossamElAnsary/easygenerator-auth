@@ -1,25 +1,23 @@
+# `docker compose up --wait` builds the images on first use and runs the whole
+# application at http://localhost:8080 with no host Node (Architecture A12).
+# Add --build after pulling changes. The Node workflow and CI start only the
+# database: `docker compose up -d mongodb`.
 name: easy-generator
 
 services:
   mongodb:
-    # MongoDB 8.0 refuses to start on Linux kernels 6.19 through 7.0.13
-    # (SERVER-121912), which current CI runners and Linux hosts run; 7.0 does not.
-    image: mongo:7.0.45@sha256:c53852c00c23ca9f23fc39690350ffa9a80e3642fe8f96879726d8da0abe80a7
-    command:
-      [
-        'mongod',
-        '--replSet',
-        'easy-generator-rs',
-        '--bind_ip_all',
-        '--port',
-        '27018',
-      ]
+    build:
+      context: .
+      dockerfile: docker/mongodb/Dockerfile
+    # app, proxy, and mongodb-init share this service's network namespace, so
+    # the API keeps its loopback listener and the replica set keeps advertising
+    # localhost:27018. Compose allows ports only here, on the namespace owner.
     ports:
       - '127.0.0.1:27018:27018'
+      - '127.0.0.1:${APP_PORT:-8080}:8080'
     volumes:
       # Named per major version: 7.0 cannot open data files written by 8.0.
       - mongodb-data-7.0:/data/db
-      - ./scripts/mongo-init.js:/opt/easy-generator/mongo-init.js:ro
     healthcheck:
       test:
         [
@@ -35,6 +33,80 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+
+  # Initializes or verifies the replica set once, like `npm run db:ready`.
+  mongodb-init:
+    # The image Compose builds for `mongodb`, never pulled from a registry.
+    image: easy-generator-mongodb
+    pull_policy: never
+    network_mode: service:mongodb
+    command:
+      [
+        'mongosh',
+        '--nodb',
+        '--quiet',
+        '--file',
+        '/opt/easy-generator/wait-and-init.js',
+      ]
+    depends_on:
+      mongodb:
+        condition: service_started
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    network_mode: service:mongodb
+    # The loopback preview of Architecture A02: no Secure cookie and no HSTS,
+    # so the origin must stay on localhost.
+    environment:
+      NODE_ENV: development
+      PORT: '3000'
+      SERVE_WEB: 'true'
+      APP_ORIGIN: http://localhost:${APP_PORT:-8080}
+      TRUST_PROXY: 127.0.0.1
+      MONGODB_URI: mongodb://localhost:27018/easy_generator?replicaSet=easy-generator-rs
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+      start_interval: 2s
+    depends_on:
+      mongodb-init:
+        condition: service_completed_successfully
+      mongodb:
+        condition: service_healthy
+
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/proxy/Dockerfile
+    network_mode: service:mongodb
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--quiet',
+          '--spider',
+          'http://127.0.0.1:8080/api/health',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+    depends_on:
+      app:
+        condition: service_healthy
 
 volumes:
   mongodb-data-7.0:

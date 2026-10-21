@@ -15,14 +15,15 @@ AGENTS.md, imported above, is the shared agent guide: goal, document ownership, 
 
 ## Commands
 
-First-time setup needs Docker: `npm ci`, `cp .env.example .env`, `docker compose up -d`, `npm run db:ready`. The last step is idempotent; it initializes or verifies the single-node replica set `easy-generator-rs` on `127.0.0.1:27018`.
+First-time setup needs Docker: `npm ci`, `cp .env.example .env`, `docker compose up -d mongodb`, `npm run db:ready`. The last step is idempotent; it initializes or verifies the single-node replica set `easy-generator-rs` on `127.0.0.1:27018`.
 
 - `npm run dev`: builds contracts and API, then watches contracts, the API (`127.0.0.1:3000`), and Vite (`127.0.0.1:5173`, proxying `/api`). It is long-running, so start it in the background.
 - `npm run check`: the complete local executable gate (lint/format, strict typecheck, workspace tests, builds, real browser suite). Install Chromium first with `PLAYWRIGHT_BROWSERS_PATH="$PWD/.cache/ms-playwright" npx playwright install chromium`. Stop any dev/preview process on port 3000; browser cases own that port and isolated databases. `npm run test:e2e` builds and runs only browser cases; `check:foundation` excludes browsers. CI/release gates remain separate.
 - `npm run lint`: ESLint plus `prettier --check .`, which also fails on unformatted Markdown; `npm run format` fixes it. The planning documents (`AGENTS.md`, `PLAN.md`, `AI.md`, `docs/plan/`) are deliberately Prettier-ignored, so preserve their layout by hand.
 - `npm run typecheck`, `npm test`, `npm run build`: each builds `@easy-generator/contracts` first.
 - `npm run build && npm run preview`: the compiled stack on `http://localhost:3000`, in development mode over loopback HTTP.
-- CI: `.github/workflows/ci.yml` runs the same steps on GitHub Actions (pinned Node/npm, Compose MongoDB plus `db:ready`, lint, typecheck, tests, `test:e2e`) with read-only permissions. Keep it in step with `npm run check`, and pin actions to full commit SHAs.
+- `docker compose up --wait`: the whole application in containers at `http://localhost:8080`, needing no host Node (Architecture A12). It builds missing images; add `--build` after changing code. `app`, `proxy`, and `mongodb-init` share `mongodb`'s network namespace, so the API keeps its `127.0.0.1` listener and every port is declared on `mongodb`. It can run alongside `npm run check`: its API port 3000 is inside the namespace, not on the host.
+- CI: `.github/workflows/ci.yml` runs the same steps on GitHub Actions (pinned Node/npm, Compose MongoDB plus `db:ready`, lint, typecheck, tests, `test:e2e`) with read-only permissions, plus a `docker` job that runs `docker compose up --wait` and a curl smoke test through the proxy. Keep it in step with `npm run check`, and pin actions to full commit SHAs.
 
 Single tests (arguments after `--` go to Vitest):
 
@@ -36,7 +37,7 @@ npm test -w @easy-generator/contracts -- -t 'rejects'
 - Run API tests through the npm script: it loads the root `.env`, which supplies `MONGODB_TEST_URI`, via `node --env-file-if-exists`. A plain `npx vitest` in `apps/api` does not. Database suites fail rather than skip when the replica set is unavailable.
 - Inspect data with `docker compose exec mongodb mongosh --port 27018`. The project's mongod listens only on 27018, and a bare `mongosh` connects to 27017.
 - MongoDB is pinned to 7.0.45 on purpose: 8.0 exits at startup on Linux kernels 6.19 through 7.0.13 (SERVER-121912), including GitHub's `ubuntu-24.04` runners. Do not move to 8.x until a release starts there. The volume name carries the major version, because a server cannot open files from a newer one.
-- `compose.yaml` fixes the project name (`easy-generator`) and host port 27018, so every checkout and worktree shares one container and data volume. `docker compose up -d` from another checkout recreates that container with the other path's `scripts/mongo-init.js` mount (`docker compose --dry-run up -d` shows it). For a separate replica set, stop the default container and export one distinct `COMPOSE_PROJECT_NAME` for every command, `db:ready` included; a new name gets a fresh volume. Never run `docker compose down -v` on the default project.
+- `compose.yaml` fixes the project name (`easy-generator`) and host ports 27018 and 8080, so every checkout and worktree shares the same containers, image tags, and data volume. `docker/mongodb/Dockerfile` copies `scripts/mongo-init.js` into the image (no bind mount), so `--build` from any checkout replaces the shared images with that checkout's files (`docker compose --dry-run up` shows what would change). For a separate replica set, stop the default container and export one distinct `COMPOSE_PROJECT_NAME` for every command, `db:ready` included; a new name gets a fresh volume. Never run `docker compose down -v` on the default project.
 
 ## How the code fits together
 

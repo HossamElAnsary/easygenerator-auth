@@ -69,7 +69,7 @@ async function initializeLocal(): Promise<void> {
   );
   if (result.status !== 0 || result.error) {
     throw new Error(
-      'Start the project database with docker compose up -d first.',
+      'Start the project database with docker compose up -d mongodb first.',
     );
   }
 

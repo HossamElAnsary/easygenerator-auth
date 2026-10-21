@@ -1,0 +1,19 @@
+# Keep secrets, local copies, and generated files out of every build context
+# (Architecture A12). The Dockerfiles copy only the sources they need.
+.git
+.github
+.cache
+.claude
+.playwright-mcp
+.data
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+coverage
+test-results
+playwright-report
+.env
+.env.*
+Full_Stack_Test_Task.*
+*.log
+.DS_Store
