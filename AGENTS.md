@@ -47,6 +47,7 @@ The repository uses npm workspaces with one lockfile:
 | `apps/api` | NestJS controllers/services/guards, MongoDB through Mongoose, users and sessions |
 | `packages/contracts` | Shared Zod input schemas, public types, validation constants |
 | `tests/e2e` | Focused browser journeys |
+| `docker/`, `compose.yaml` | From v1.3: Dockerfiles for the MongoDB, application, and proxy images, and one Compose file that runs the whole application without host Node (Architecture A12) |
 
 The browser uses one origin and relative `/api` requests. Signup creates an account and then navigates to signin. Successful signin establishes an opaque server-managed session through an HttpOnly cookie. The server stores a hash of the session token in MongoDB, resolves the authenticated user on protected requests, and revokes the presented session on logout. The browser restores identity through the protected session-check endpoint before displaying the application.
 

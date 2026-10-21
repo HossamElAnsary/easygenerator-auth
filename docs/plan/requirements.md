@@ -32,6 +32,7 @@ These are optional in the brief but included in this baseline. Removing one requ
 | B04 | Operational logs | Request IDs and safe error/event metadata; no external telemetry platform | T08, T16 |
 | B05 | API documentation | Routes, schemas, errors, cookie/origin requirements, and examples in Markdown | T14 |
 | B06 | Consistent error handling | Field, authentication, rate-limit, dependency, and unexpected-error responses plus UI recovery | T03, T05, T08, T10 |
+| B07 | Docker-only run (added in v1.3 at the user's request) | One `docker compose up` builds and starts the whole application (MongoDB, the API serving the compiled UI, and a front proxy) on a machine with Docker and no host Node. A loopback HTTP preview only: no registry publishing, HTTPS, or deployment | T17 |
 
 Although the brief lists error handling as a bonus, safe treatment of ordinary invalid input and failed authentication is part of our chosen working baseline.
 
@@ -52,7 +53,7 @@ Architecture A09 explicitly selects opaque cookie sessions without JWT, refresh 
 - Password reset, email delivery or verification, MFA, social signin, roles, permissions, profile editing, and account deletion.
 - Refresh tokens, remember-me options, device management, logout-all-devices, and cross-tab synchronization beyond rechecking on navigation/focus.
 - A business dashboard, extra application content, custom illustrations, animations, a component library project, or multiple themes.
-- Multiple API replicas, Redis, queues, microservices, Kubernetes, cloud infrastructure, hosted environments, and continuous deployment.
+- Multiple API replicas, Redis, queues, microservices, Kubernetes, cloud infrastructure, hosted environments, published container images or registries, and continuous deployment.
 - Exhaustive cross-browser certification, load testing, a formal security audit, or 100% test coverage.
 
 These exclusions constrain this assignment, not a future product. A real public service would need further operational and account-recovery decisions before launch.
