@@ -19,7 +19,7 @@ async function bootstrap(): Promise<void> {
 bootstrap().catch(() => {
   // Do not log raw config, driver exceptions, connection strings, or credentials.
   console.error(
-    'API startup failed. Check configuration, database readiness, and built assets.',
+    'API startup failed. Check configuration, database readiness, built assets, and that PORT is free.',
   );
   process.exitCode = 1;
 });

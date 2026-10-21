@@ -8,9 +8,9 @@ Implementation covers **M1 — Foundation**, **M2 — Authentication API**, **M3
 - Docker with Compose v2 for the local single-node MongoDB replica set. No globally installed Nest CLI or MongoDB is required.
 - Free loopback ports 3000 (API), 5173 (Vite), and 27018 (MongoDB).
 
-Compose pins MongoDB **8.0.32** and its multi-platform image digest. Port 27018 avoids the existing MongoDB service on this workstation; the container also advertises `localhost:27018` so host-side replica-set discovery works. npm 12 install-script permissions are version-scoped for SWC and Argon2; the optional fsevents install script remains disabled. The lockfile install and native-addon smoke were verified on macOS arm64.
+Compose pins MongoDB **8.0.32** and its multi-platform image digest. It publishes port 27018 instead of the default 27017, so it does not collide with another local MongoDB; the container also advertises `localhost:27018` so host-side replica-set discovery works. npm 12 install-script permissions are version-scoped for SWC and Argon2; the optional fsevents install script remains disabled. The locked install and native addons are verified on macOS arm64 locally and on Linux x64 in CI.
 
-Use your Node version manager to install/select the pinned version (`nvm install && nvm use` for nvm), then `npm install --global npm@12.2.0` if needed. Check `node --version` and `npm --version` before installing. Strict engine checks intentionally reject another runtime.
+Use your Node version manager to install and select the pinned version (`nvm install && nvm use` for nvm). Node 24.22.0 bundles npm 11.19.1, so then run `npm install --global npm@12.2.0`, which upgrades npm for that Node installation only. Check `node --version` and `npm --version` before installing dependencies: strict engine checks intentionally reject another runtime, and `npm ci` with the bundled npm stops with `EBADENGINE`.
 
 Exact dependencies and the single `package-lock.json` pin Nest **12.2.0**, Nest/Mongoose adapter **12.0.0**, Mongoose **9.11.2**, React **19.3.1**, Vite **8.3.4**, Zod **4.6.7**, React Hook Form **7.90.0**, its resolvers **6.0.0**, TanStack Query **5.104.5**, TypeScript **6.0.3**, Vitest **5.0.5**, Helmet **8.3.0**, cookie-parser **1.4.7**, and `@nestjs/throttler` **6.7.1** (which declares Nest 12 support). TypeScript 6 is deliberate: the pinned TypeScript ESLint tools do not support TypeScript 7. Nest's generated ESM scaffold was inspected, then adapted to workspaces; SWC preserves decorator metadata for DI tests.
 
@@ -26,7 +26,7 @@ npm run db:ready
 npm run dev
 ```
 
-Open **`http://localhost:5173`** (exactly this host, not `127.0.0.1`). The home route resolves the session and redirects to signin or the application; signup is linked from signin. Vite proxies relative `/api` requests without changing the browser Origin. The API listens on loopback port 3000, behind the same proxy, and logs one JSON line per API request (request ID, method, route template, status, duration, error code). The development command builds shared contracts and the API first, then watches contracts/API/web. Stop it with Ctrl-C. `docker compose stop` stops MongoDB while retaining the project volume.
+Open **`http://localhost:5173`** (exactly this host, not `127.0.0.1`). Vite's startup banner prints `http://127.0.0.1:5173/`, the address it listens on; use `localhost` anyway. On `127.0.0.1` the pages load, but every form submission fails with `This request is not allowed.`, because the browser's `Origin` then differs from `APP_ORIGIN`. The home route resolves the session and redirects to signin or the application; signup is linked from signin. Vite proxies relative `/api` requests without changing the browser Origin. The API listens on loopback port 3000, behind the same proxy, and logs one JSON line per API request (request ID, method, route template, status, duration, error code). The development command builds shared contracts and the API first, then watches contracts/API/web. Stop it with Ctrl-C. `docker compose stop` stops MongoDB while retaining the project volume.
 
 The example database is local and unauthenticated, published on loopback only. It has one replica-set member and provides no redundancy. This is not a public database deployment. Do not reuse its configuration for production. The readiness initializer is restricted to this project's local/test setup; it never reconfigures an existing set. Keep the same advertised host/port when using the provided Compose configuration so the host application can discover the primary.
 
@@ -59,7 +59,7 @@ npm run test:e2e
 npm run check
 ```
 
-The download stays in ignored `.cache/ms-playwright` (Chromium revision 1248 for Playwright 1.64.1 on this workstation), not a temporary tool directory. On Linux, install Playwright's required OS libraries using its `install --with-deps chromium` option when needed.
+The download stays in ignored `.cache/ms-playwright` (Playwright 1.64.1's Chromium, build 1248), not a temporary tool directory. On Linux, install Playwright's required OS libraries using its `install --with-deps chromium` option when needed.
 
 Stop the development/preview server before browser tests: the suite owns loopback port **3000** and refuses to reuse another process. Each case starts the compiled real API and serves the compiled UI at **`http://localhost:3000`** in test mode, with that exact `APP_ORIGIN`, its own generated test database, and fresh production rate-limit counters. One worker runs the cases sequentially; retries are disabled. A dedicated case exercises the real signup limit and `Retry-After`. No rate-limit override, forwarding-header spoofing, or development-database cleanup is used. Normal teardown closes the owned server and drops only the case's owned database. A forcibly killed process may leave its generated test database; never broadly delete application data to clean up tests. Screenshots and failure reports stay under ignored `test-results/`.
 
@@ -95,17 +95,17 @@ All routes are under `/api`. Every API response sends `Cache-Control: no-store` 
 
 **Rate limits.** Per route and client IP per minute: signup 5, signin 10, logout 30, every other route 120. A `429` includes `Retry-After` in seconds. Counters live in memory, reset on restart, and are not shared across processes. `X-Forwarded-For` is ignored unless `TRUST_PROXY` names the proxy that sets it.
 
-Example against `npm run dev` with dummy credentials. A repeated run gets `409` from signup and then continues.
+Example for bash or zsh against `npm run dev`, with dummy credentials. Signup prints the new user, signin and `me` print the same user, logout prints `204`, and the last request prints a `401` error because the session was revoked. A repeated run gets `409 EMAIL_IN_USE` from signup and then continues.
 
 ```sh
 ORIGIN=http://localhost:5173
 JAR=$(mktemp)
 JSON=(-H "Origin: $ORIGIN" -H 'X-CSRF-Protection: 1' -H 'Content-Type: application/json')
-curl -s "${JSON[@]}" -d '{"name":"Ada Lovelace","email":"ada@example.com","password":"Analytical-1"}' "$ORIGIN/api/auth/signup"
-curl -s -c "$JAR" "${JSON[@]}" -d '{"email":"ada@example.com","password":"Analytical-1"}' "$ORIGIN/api/auth/signin"
-curl -s -b "$JAR" "$ORIGIN/api/auth/me"
+curl -s -w '\n' "${JSON[@]}" -d '{"name":"Ada Lovelace","email":"ada@example.com","password":"Analytical-1"}' "$ORIGIN/api/auth/signup"
+curl -s -w '\n' -c "$JAR" "${JSON[@]}" -d '{"email":"ada@example.com","password":"Analytical-1"}' "$ORIGIN/api/auth/signin"
+curl -s -w '\n' -b "$JAR" "$ORIGIN/api/auth/me"
 curl -s -b "$JAR" -c "$JAR" -o /dev/null -w '%{http_code}\n' "${JSON[@]}" -d '{}' "$ORIGIN/api/auth/logout"
-curl -s -b "$JAR" "$ORIGIN/api/auth/me" # 401: the session was revoked
+curl -s -w '\n' -b "$JAR" "$ORIGIN/api/auth/me"
 ```
 
 ## Configuration and safety boundaries
@@ -124,7 +124,7 @@ Use `.env.example` as the reference. Real `.env` files, local source briefs, dep
 
 Startup validates configuration and required assets, connects to a writable replica-set primary, then creates and verifies the unique `users.email`, unique `sessions.tokenHash`, and TTL `sessions.expiresAt` indexes before listening. Existing indexes are never dropped; a conflicting definition stops startup. Database policy uses primary/majority reads, majority and journal-acknowledged writes (5-second write concern budget), 5-second server selection/read budgets, and a 10-second socket timeout. Session checks use a primary linearizable read bounded to 5 seconds, which costs about 0.1 s per authenticated request on the local set. Passwords use Argon2id (19 MiB, 2 iterations, parallelism 1), measured at about 13 ms per hash on an Apple M4 Pro.
 
-`npm run build && npm run preview` uses development mode over loopback HTTP: the `session` cookie without `Secure`, and security headers without HSTS or `upgrade-insecure-requests`. That is why development, test, and preview modes accept only a loopback `APP_ORIGIN`.
+`npm run build && npm run preview` uses development mode over loopback HTTP: the `session` cookie without `Secure`, and security headers without HSTS or `upgrade-insecure-requests`. That is why development, test, and preview modes accept only a loopback `APP_ORIGIN`. Stop `npm run dev` first: both use port 3000, and a busy port fails startup with the same generic line as any other startup problem.
 
 **Production topology.** The API listens on `127.0.0.1` only, so production runs behind an HTTPS reverse proxy on the same host (or network namespace). The proxy terminates TLS for the public origin, redirects HTTP to HTTPS, and overwrites `X-Forwarded-For` with the client address. Production also needs an external replica set. Run `npm run build`, then `npm run start:prod` with `APP_ORIGIN` set to the public HTTPS origin, `MONGODB_URI` naming the replica set, and `TRUST_PROXY=127.0.0.1` (plus any upstream proxy addresses the local proxy forwards for). Startup refuses production without that trust: every client would share the proxy's address and therefore one rate-limit bucket. Startup failures print one generic line by design, so check these settings first. Hashed assets are revalidated (`max-age=0` with ETags) rather than cached long-term.
 
