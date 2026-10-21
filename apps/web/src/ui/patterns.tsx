@@ -130,10 +130,15 @@ export function useWaitUntil(until: number) {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     if (!until) return;
-    const timer = setTimeout(
-      () => setNow(Date.now()),
-      Math.max(0, until - Date.now()),
-    );
+    let timer: ReturnType<typeof setTimeout>;
+    // Timers and Date.now() use different clocks, so a timer can fire just
+    // before the deadline; re-arm until the deadline has really passed.
+    const wake = () => {
+      const remaining = until - Date.now();
+      if (remaining > 0) timer = setTimeout(wake, remaining);
+      else setNow(Date.now());
+    };
+    timer = setTimeout(wake, Math.max(0, until - Date.now()));
     return () => clearTimeout(timer);
   }, [until]);
   return until > now;
