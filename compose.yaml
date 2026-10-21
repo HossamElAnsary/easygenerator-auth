@@ -2,7 +2,9 @@ name: easy-generator
 
 services:
   mongodb:
-    image: mongo:8.0.32@sha256:d0d926f94df099bff534b7ee5b5986458131a22489dfff8664509af0c1e2ca9c
+    # MongoDB 8.0 refuses to start on Linux kernels 6.19 through 7.0.13
+    # (SERVER-121912), which current CI runners and Linux hosts run; 7.0 does not.
+    image: mongo:7.0.45@sha256:c53852c00c23ca9f23fc39690350ffa9a80e3642fe8f96879726d8da0abe80a7
     command:
       [
         'mongod',
@@ -15,7 +17,8 @@ services:
     ports:
       - '127.0.0.1:27018:27018'
     volumes:
-      - mongodb-data:/data/db
+      # Named per major version: 7.0 cannot open data files written by 8.0.
+      - mongodb-data-7.0:/data/db
       - ./scripts/mongo-init.js:/opt/easy-generator/mongo-init.js:ro
     healthcheck:
       test:
@@ -34,4 +37,4 @@ services:
       start_period: 10s
 
 volumes:
-  mongodb-data:
+  mongodb-data-7.0:

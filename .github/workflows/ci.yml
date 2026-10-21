@@ -38,10 +38,12 @@ jobs:
           test "$(node --version)" = "v$(cat .nvmrc)"
           test "$(npm --version)" = 12.2.0
 
-      # compose.yaml pins mongo:8.0.32 by digest and runs the single-node
-      # replica set on loopback port 27018; the example env names it.
+      # compose.yaml pins mongo:7.0.45 by digest and runs the single-node
+      # replica set on loopback port 27018; the example env names it. The
+      # kernel is printed because MongoDB 8.0 refuses kernels 6.19-7.0.13.
       - name: Start MongoDB
         run: |
+          uname -r
           cp .env.example .env
           docker compose up -d
 
