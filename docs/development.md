@@ -97,4 +97,5 @@ Integration tests cover production cookies and headers, and production mode was 
 - **The API exits with one generic startup line.** Check the configuration, `npm run db:ready`, built assets when `SERVE_WEB=true`, and that `PORT` is free. A dev, preview, or browser-test server may already hold port 3000.
 - **`npm ci` stops with `EBADENGINE`.** Select Node 24.22.0 and upgrade npm to 12.2.0; the versions are enforced exactly.
 - **An old MongoDB 8.0 volume.** A checkout that ran a revision before 7.0.45 keeps the unused volume `easy-generator_mongodb-data`, which 7.0 cannot open. Remove it with `docker volume rm easy-generator_mongodb-data` once you no longer need its data.
+- **A 502 right after `npm run dev` starts.** The watchers' first compiles restart the API once or twice in its first seconds; retry the request.
 - **Port 8080 is busy.** Start the Docker stack with `APP_PORT=8090` (or another free port).
