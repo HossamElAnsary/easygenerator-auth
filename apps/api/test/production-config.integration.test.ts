@@ -15,12 +15,15 @@ const SHELL = '<!doctype html><title>stub shell</title>';
 
 describe('production configuration', () => {
   let testApp: TestApp;
-  let webDirectory: string;
+  let installDirectory: string;
 
   beforeAll(async () => {
     // A stand-in for the built web app, so static routing runs in production mode.
-    webDirectory = await mkdtemp(join(tmpdir(), 'easy-generator-web-'));
-    await mkdir(join(webDirectory, 'assets'));
+    // It sits below a dot-directory, as an installation path may: only the
+    // request path, never where the app is installed, decides what is hidden.
+    installDirectory = await mkdtemp(join(tmpdir(), 'easy-generator-web-'));
+    const webDirectory = join(installDirectory, '.release', 'web');
+    await mkdir(join(webDirectory, 'assets'), { recursive: true });
     await writeFile(join(webDirectory, 'index.html'), SHELL);
     await writeFile(join(webDirectory, 'assets', 'app.js'), 'export {};');
     testApp = await startTestApp({
@@ -35,7 +38,8 @@ describe('production configuration', () => {
 
   afterAll(async () => {
     await testApp?.close();
-    if (webDirectory) await rm(webDirectory, { recursive: true, force: true });
+    if (installDirectory)
+      await rm(installDirectory, { recursive: true, force: true });
   });
 
   it('issues and clears a __Host- cookie that is Secure, HttpOnly, Lax, and host-only', async () => {

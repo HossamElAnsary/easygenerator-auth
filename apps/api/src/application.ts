@@ -93,7 +93,6 @@ function serveWebApplication(webDirectory: string): express.RequestHandler {
     index: false,
     redirect: false,
   });
-  const shell = join(webDirectory, 'index.html');
   return (req, res, next) => {
     if (isApiPath(req.path) || !['GET', 'HEAD'].includes(req.method)) {
       next();
@@ -113,7 +112,9 @@ function serveWebApplication(webDirectory: string): express.RequestHandler {
         return;
       }
       res.setHeader('Cache-Control', 'no-cache');
-      res.sendFile(shell, (error) => {
+      // Relative to `root`: without one, send treats a dot-directory anywhere
+      // in the install path as a hidden file and answers 404.
+      res.sendFile('index.html', { root: webDirectory }, (error) => {
         if (error && !res.headersSent) res.status(500).end();
       });
     });
