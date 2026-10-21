@@ -2,7 +2,7 @@
 
 Baseline: **v1.2 — 2026-10-20**
 
-Status: **M1 foundation, M2 authentication API, M3 browser journey, and M4 quality and CI are implemented with local evidence recorded in Delivery and Verification. The CI workflow has not run remotely (no remote repository exists). M5 submission readiness is next.**
+Status: **M1 foundation, M2 authentication API, M3 browser journey, and M4 quality and CI are implemented with local evidence recorded in Delivery and Verification. The code is pushed to a private GitHub repository, where CI passes. M5 submission readiness is next; publication and the recruiter handoff are M6.**
 
 ## Objective
 
@@ -64,7 +64,7 @@ Detailed values and behavior are defined in Architecture and Experience.
 - README and AI.md describe the actual implementation and its limitations; selected CI checks pass for the submitted revision.
 - The public repository is verified and its link has actually been handed to the recruiter when submission is performed. “Ready to submit” and “submitted” are distinct states.
 
-M1 establishes the executable foundation, M2 the authentication API, M3 the browser journey, and M4 the accessibility, production-configuration, and security reviews plus the CI workflow, verified with direct API/Mongo tests, Chromium, and local workflow replays. A remote CI run, production certification, publication, and submission are not claimed. See Verification for the exact completed and Pending checks.
+M1 establishes the executable foundation, M2 the authentication API, M3 the browser journey, and M4 the accessibility, production-configuration, and security reviews plus the CI workflow, verified with direct API/Mongo tests, Chromium, and local workflow replays. CI passes on the private repository; production certification, publication, and submission are not claimed. See Verification for the exact completed and Pending checks.
 
 ## Planning exit review
 
