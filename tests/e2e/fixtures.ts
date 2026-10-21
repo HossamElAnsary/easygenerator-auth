@@ -15,7 +15,31 @@ type Database = ReturnType<typeof isolatedDatabase>;
 export const test = base.extend<{
   database: Database;
   server: { advanceClock(milliseconds: number): void };
+  contentSecurityPolicy: void;
 }>({
+  // The served CSP has no 'unsafe-eval'. A blocked attempt is still reported,
+  // even when the page catches the error, so every case asserts there are none.
+  contentSecurityPolicy: [
+    async ({ context }, use) => {
+      const violations: string[] = [];
+      await context.exposeBinding('reportCspViolation', (_source, violation) =>
+        violations.push(String(violation)),
+      );
+      await context.addInitScript(() => {
+        document.addEventListener('securitypolicyviolation', (event) => {
+          const report = (
+            window as unknown as {
+              reportCspViolation(violation: string): Promise<void>;
+            }
+          ).reportCspViolation;
+          void report(`${event.effectiveDirective} ${event.blockedURI}`);
+        });
+      });
+      await use();
+      expect(violations, 'Content Security Policy violations').toEqual([]);
+    },
+    { auto: true },
+  ],
   // Playwright inspects destructured fixture dependencies.
   // eslint-disable-next-line no-empty-pattern
   database: async ({}, use) => {

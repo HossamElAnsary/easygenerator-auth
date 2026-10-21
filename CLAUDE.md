@@ -55,6 +55,7 @@ npm test -w @easy-generator/contracts -- -t 'rejects'
 ### Web (`apps/web`: React 19, Vite)
 
 - `src/main.tsx` creates the single `QueryClient` and the `BrowserRouter`. Requests use relative `/api` URLs with `credentials: 'same-origin'` and an abort/timeout signal, then decode the response with the shared schema (`src/api/client.ts`).
+- `src/main.tsx` imports `./configure-zod` before anything else. Zod object schemas read the `jitless` flag when they are created, and its `new Function` probe would otherwise be reported as a CSP violation. The browser fixture fails every case that reports a CSP violation.
 - Tests sit under `src/` and run in jsdom. They render with a fresh `QueryClient` (`retry: false`, `gcTime: 0`) and, for routed components, a `MemoryRouter`. They stub `fetch` with `vi.stubGlobal`, which the config restores after each test.
 - The UI is English-only, with no i18n layer. User-facing copy is specified word for word in [Experience](docs/plan/experience.md) and Architecture, including R04's exact `Welcome to the application.` Adding locales or RTL is a scope change to record in Delivery first.
 
