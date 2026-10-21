@@ -54,16 +54,16 @@ On failure, each job prints the containers' state and recent logs, because the t
 
 ## Docker stack
 
-`docker compose up --wait` builds three images from `docker/` and waits until every service is healthy:
+`docker compose up --wait` builds the images from the three Dockerfiles in `docker/` and waits until every service is healthy:
 
-| Service        | Image                                | Role                                                                                         |
-| -------------- | ------------------------------------ | -------------------------------------------------------------------------------------------- |
-| `mongodb`      | `mongo:7.0.45` plus the init scripts | The single-node replica set on the volume `mongodb-data-7.0`; publishes ports 27018 and 8080 |
-| `mongodb-init` | The same image, run once             | Initializes or verifies the replica set, like `npm run db:ready`, then exits                 |
-| `app`          | Node 24.22.0, compiled API and UI    | The API serving the compiled UI as `npm run preview` does; runs as the `node` user           |
-| `proxy`        | Unprivileged nginx 1.30              | Forwards everything to the API and overwrites `X-Forwarded-For`                              |
+| Service        | Image                                    | Role                                                                                         |
+| -------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `mongodb`      | `mongo:7.0.45` plus the init scripts     | The single-node replica set on the volume `mongodb-data-7.0`; publishes ports 27018 and 8080 |
+| `mongodb-init` | Built from the same Dockerfile, run once | Initializes or verifies the replica set, like `npm run db:ready`, then exits                 |
+| `app`          | Node 24.22.0, compiled API and UI        | The API serving the compiled UI as `npm run preview` does; runs as the `node` user           |
+| `proxy`        | Unprivileged nginx 1.30                  | Forwards everything to the API and overwrites `X-Forwarded-For`                              |
 
-`app`, `proxy`, and `mongodb-init` share `mongodb`'s network namespace. That lets the API keep listening on `127.0.0.1` behind a same-host proxy, as in production, and lets the replica set advertise `localhost:27018` to the containers and to the host alike. Compose therefore declares every port on `mongodb`, and recreating `mongodb` recreates the others. Ports are bound to `127.0.0.1` only.
+`app`, `proxy`, and `mongodb-init` share `mongodb`'s network namespace. That lets the API keep listening on `127.0.0.1` behind a same-host proxy, as in production, and lets the replica set advertise `localhost:27018` to the containers and to the host alike. Compose therefore declares every port on `mongodb`, and recreating `mongodb` recreates the others. Ports are bound to `127.0.0.1` only. The proxy streams request bodies, so the API's controls reject a request before reading it; a body over 1 MiB gets nginx's own HTML 413 instead of the API's JSON error.
 
 The stack runs in development mode (a `session` cookie without `Secure`, no HSTS) on `http://localhost:8080`, or on `APP_PORT`. It uses the same database as `npm run dev`. Compose builds images that are missing and otherwise reuses them, so add `--build` after changing code. The project name is fixed, so every checkout and worktree shares the same containers, images, and volume.
 

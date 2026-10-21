@@ -12,7 +12,7 @@ cd easygenerator-auth
 docker compose up --wait
 ```
 
-The first run builds three images, which takes a few minutes; later runs start in seconds. Then open **http://localhost:8080**, create an account, and sign in.
+The first run builds the images, which takes a few minutes; later runs start in seconds. Then open **http://localhost:8080**, create an account, and sign in.
 
 | Task                          | Command                                                                     |
 | ----------------------------- | --------------------------------------------------------------------------- |
@@ -125,7 +125,7 @@ The decisions and their reasons are in [docs/plan/architecture.md](docs/plan/arc
 ## Limitations
 
 - No deployed HTTPS environment exists. Production mode was exercised locally, including behind a TLS proxy.
-- Browser tests cover Chromium only. The Docker stack is verified on macOS (arm64) and Linux (amd64), not Windows.
+- Browser tests cover Chromium only. The Docker stack is verified on macOS (arm64), not Windows.
 - Rate-limit counters live in memory in one process. Docker Desktop may count every local browser as one client.
 - Signup reveals whether an email is already registered, a deliberate trade-off.
 - The single-node database has no redundancy.

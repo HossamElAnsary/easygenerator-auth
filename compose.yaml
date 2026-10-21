@@ -36,9 +36,11 @@ services:
 
   # Initializes or verifies the replica set once, like `npm run db:ready`.
   mongodb-init:
-    # The image Compose builds for `mongodb`, never pulled from a registry.
-    image: easy-generator-mongodb
-    pull_policy: never
+    # Built like `mongodb` (same layers, from cache), so it works under any
+    # project name and is never pulled from a registry.
+    build:
+      context: .
+      dockerfile: docker/mongodb/Dockerfile
     network_mode: service:mongodb
     command:
       [
@@ -74,11 +76,10 @@ services:
           '-e',
           "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))",
         ]
-      interval: 30s
+      interval: 10s
       timeout: 5s
       retries: 3
       start_period: 60s
-      start_interval: 2s
     depends_on:
       mongodb-init:
         condition: service_completed_successfully
@@ -99,11 +100,10 @@ services:
           '--spider',
           'http://127.0.0.1:8080/api/health',
         ]
-      interval: 30s
+      interval: 10s
       timeout: 5s
       retries: 3
       start_period: 30s
-      start_interval: 2s
     depends_on:
       app:
         condition: service_healthy

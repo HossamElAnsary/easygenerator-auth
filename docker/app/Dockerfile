@@ -30,7 +30,8 @@ RUN find packages apps -name '*.map' -delete
 FROM node
 # The runtime never installs packages, so it carries no package manager.
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
-  /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+  /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+  /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 WORKDIR /app
 COPY --from=runtime-files /app ./
 USER node
