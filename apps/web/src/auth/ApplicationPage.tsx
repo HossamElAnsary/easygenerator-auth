@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { useAuth } from './AuthProvider';
 import { SessionNotice } from './SessionNotice';
-import { Heading, Notice, errorMessage, useRequestError } from '../ui/patterns';
+import { Alert, Heading, errorMessage, useRequestError } from '../ui/patterns';
 import styles from '../App.module.css';
 
 export function ApplicationPage() {
@@ -28,7 +28,7 @@ export function ApplicationPage() {
   return (
     <>
       <Heading>Welcome to the application.</Heading>
-      {request.error != null && <Notice>{errorMessage(request.error)}</Notice>}
+      {request.error != null && <Alert>{errorMessage(request.error)}</Alert>}
       <button
         className={styles.primary}
         disabled={pending || request.blocked}

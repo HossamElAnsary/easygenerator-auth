@@ -81,10 +81,10 @@ export function PasswordField({
           ) : undefined
         }
       />
+      {/* The label names the action, so it carries no aria-pressed state. */}
       <button
         type="button"
         className={styles.secondary}
-        aria-pressed={visible}
         aria-controls={props.id}
         onClick={() => setVisible(!visible)}
       >
@@ -105,6 +105,15 @@ export function errorMessage(error: unknown): string {
 export function Notice({ children }: { children: ReactNode }) {
   return (
     <p className={styles.notice} role="status">
+      {children}
+    </p>
+  );
+}
+// A status region inserted with its text is announced unreliably; an alert is
+// announced on insertion. Use it for the result of a user's own request.
+export function Alert({ children }: { children: ReactNode }) {
+  return (
+    <p className={styles.notice} role="alert">
       {children}
     </p>
   );

@@ -183,6 +183,9 @@ describe('browser auth state', () => {
     expect(
       await screen.findByText('The service is unavailable. Try again.'),
     ).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toBe(
+      'The service is unavailable. Try again.',
+    );
     expect(screen.getByText('Welcome to the application.')).toBeTruthy();
     client.setQueryData(['private'], user);
     me.mockImplementation(anonymous);
@@ -210,6 +213,30 @@ describe('browser auth state', () => {
     await screen.findByText('The service is unavailable. Try again.');
     await act(async () => onlineManager.setOnline(true));
     expect(signin).toHaveBeenCalledTimes(1);
+  });
+  it('announces request errors as alerts and names the password toggle only by its action', async () => {
+    vi.spyOn(authApi, 'me').mockImplementation(anonymous);
+    vi.spyOn(authApi, 'signin').mockRejectedValue(
+      new ApiError(
+        'credentials',
+        'Email or password is incorrect.',
+        'INVALID_CREDENTIALS',
+      ),
+    );
+    renderApp();
+    await fillSignin();
+    const toggle = screen.getByRole('button', { name: 'Show password' });
+    expect(toggle.hasAttribute('aria-pressed')).toBe(false);
+    await userEvent.click(toggle);
+    expect(
+      screen
+        .getByRole('button', { name: 'Hide password' })
+        .hasAttribute('aria-pressed'),
+    ).toBe(false);
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Email or password is incorrect.',
+    );
   });
   it('maps server errors, focuses first invalid field, and clears errors on correction', async () => {
     vi.spyOn(authApi, 'me').mockImplementation(anonymous);

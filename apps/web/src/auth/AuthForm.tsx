@@ -11,6 +11,7 @@ import {
 } from '@easy-generator/contracts';
 import { ApiError } from '../api/client';
 import {
+  Alert,
   Field,
   Heading,
   Notice,
@@ -159,9 +160,7 @@ export function AuthForm({ signup }: { signup: boolean }) {
           {...register('password')}
           error={errors.password?.message}
         />
-        {request.error != null && (
-          <Notice>{errorMessage(request.error)}</Notice>
-        )}
+        {request.error != null && <Alert>{errorMessage(request.error)}</Alert>}
         <button
           className={styles.primary}
           type="submit"
