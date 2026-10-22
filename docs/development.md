@@ -47,12 +47,14 @@ Workspace-level runs skip the contracts build, so run `npm run build -w @easy-ge
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on pushes to `main`, pull requests, and manual runs, with read-only repository permissions, no secrets, and actions pinned to full commit SHAs. Two jobs run in parallel:
+`.github/workflows/ci.yml` runs on pushes to `main`, pull requests, manual runs, and weekly on `main` (Mondays 05:17 UTC), with read-only repository permissions, no secrets, and actions pinned to full commit SHAs. The weekly run catches a runner or registry change that breaks the pinned build without any push. Two jobs run in parallel:
 
 - **check:** the pinned Node and npm, `docker compose up -d mongodb`, `npm ci`, `npm run db:ready`, lint, typecheck, workspace tests, Chromium with its system packages, and `npm run test:e2e`.
 - **docker:** the README's Docker quick start on a clean runner, then a curl smoke test through the proxy: health, the UI and its CSP, and signup, signin, `me`, logout, and a rejected origin.
 
 On failure, each job prints the containers' state and recent logs, because the tools themselves print one generic line.
+
+`.github/dependabot.yml` opens a grouped pull request each month for new action releases and base-image updates: patch releases for `mongo` and nginx, and only a new digest of the same tag for `node`, whose version `.nvmrc` owns. Releases younger than seven days wait. Update npm packages by hand; a new version of `argon2` or `@swc/core` also needs its `allowScripts` entry in `package.json`.
 
 ## Docker stack
 

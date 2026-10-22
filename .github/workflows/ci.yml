@@ -8,6 +8,10 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # Weekly on main, so a runner or registry change that breaks the pinned
+  # build shows up without a push (the kernel change behind run #6 did).
+  schedule:
+    - cron: '17 5 * * 1'
 
 permissions:
   contents: read
