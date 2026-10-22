@@ -2,7 +2,7 @@
 
 Baseline: **v1.4 — 2026-10-21** (v1.3 plus B08, enforced backend module boundaries, and B09, measured backend performance; planned on the branch `refactor/m8-backend-structure`)
 
-Status: **M1 foundation, M2 authentication API, M3 browser journey, M4 quality and CI, and M5 submission readiness are complete, with evidence recorded in Delivery and Verification. M6 made the GitHub repository public and verified it, and CI passes on the published revision. Baseline v1.3 added M7, a Docker-only run and a shorter README, which is complete and verified. The project is ready for handoff; it is not submitted until the recruiter link handoff is performed. Baseline v1.4 begins a backend optimization phase: M8 (module boundaries) and M9 (measured performance) are verified on the branch `refactor/m8-backend-structure`, the session read policy awaits the user's decision, and `main` is unchanged.**
+Status: **M1 foundation, M2 authentication API, M3 browser journey, M4 quality and CI, and M5 submission readiness are complete, with evidence recorded in Delivery and Verification. M6 made the GitHub repository public and verified it, and CI passes on the published revision. Baseline v1.3 added M7, a Docker-only run and a shorter README, which is complete and verified. The project is ready for handoff; it is not submitted until the recruiter link handoff is performed. Baseline v1.4 begins a backend optimization phase: M8 (module boundaries) and M9 (measured performance) are verified on the branch `refactor/m8-backend-structure`, the user kept linearizable session reads, and `main` is unchanged.**
 
 ## Objective
 

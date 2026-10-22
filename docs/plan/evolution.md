@@ -37,7 +37,7 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 | [EV-HTTP-03](#ev-http-03--api-versioning) | API versioning | Deferred | S4 | M |
 | [EV-PERF-01](#ev-perf-01--bounded-password-hashing-admission) | Bounded password-hashing admission | Deferred | S2 | M |
 | [EV-PERF-02](#ev-perf-02--thread-pool-size-per-deployment) | Thread-pool size per deployment | Adopted (M9, documentation) | S1 | S |
-| [EV-DATA-01](#ev-data-01--the-session-read-policy) | The session read policy | Measured in M9; the user decides | S1 | S |
+| [EV-DATA-01](#ev-data-01--the-session-read-policy) | Alternatives to the linearizable session read | Deferred (user kept linearizable reads, 2026-10-22) | S2 | S |
 | [EV-DATA-02](#ev-data-02--an-index-on-sessions-user-id) | An index on sessions' user ID | Deferred | S4 | S |
 | [EV-DATA-03](#ev-data-03--a-multi-node-replica-set-with-backups-and-restore-drills) | A multi-node replica set with backups and restore drills | Deferred | S2 | L |
 | [EV-DATA-04](#ev-data-04--returning-to-mongodb-8x) | Returning to MongoDB 8.x | Deferred | S1 | S |
@@ -176,7 +176,7 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 
 ### EV-DATA-01 — The session read policy
 
-- **Status:** Measured in M9; the decision is the user's, and any change updates A10 and its checks first.
+- **Status:** Deferred. On 2026-10-22 the user kept linearizable reads (option 1) after M9's measurements. Any later change updates A10 and its checks first; try option 2 before weakening the guarantee.
 - **Today:** a linearizable read on every authenticated request. On the single-node set it costs about 104 ms, against 0.8 ms for a majority read of the same live session, because the read waits for the next journal commit: with `journalCommitInterval` set to 10, 50, and 100 ms, its median was 12.5, 54.5, and 105 ms. `/api/auth/me` throughput is therefore bounded by concurrent connections (about 9.6 requests per second each), not CPU.
 - **Options:** (1) keep it (A10 as written); (2) tune the server's journal commit interval, a deployment setting that trades more frequent journal flushes for lower latency and changes no guarantee; (3) majority reads, accepting that a deposed primary can briefly honor a revoked session during a failover; (4) linearizable reads only where revocation is confirmed, majority elsewhere, with the same risk as (3) on authenticated requests.
 - **Trigger for revisiting:** the cost measured on the real production replica set, where replication rather than the local journal timer decides it, exceeds the authenticated-request latency budget.
