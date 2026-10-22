@@ -58,7 +58,7 @@ Architecture A09 explicitly selects opaque cookie sessions without JWT, refresh 
 - Multiple API replicas, Redis, queues, microservices, Kubernetes, cloud infrastructure, hosted environments, published container images or registries, and continuous deployment.
 - Exhaustive cross-browser certification, capacity or load certification (B09's local baseline is not one), a formal security audit, or 100% test coverage.
 
-These exclusions constrain this assignment, not a future product. A real public service would need further operational and account-recovery decisions before launch.
+These exclusions constrain this assignment, not a future product. A real public service would need further operational and account-recovery decisions before launch. The [Evolution register](evolution.md) records, for the exclusions already weighed, the scale stage and trigger that would bring each back.
 
 ## Scope protection
 

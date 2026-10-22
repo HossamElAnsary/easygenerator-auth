@@ -130,6 +130,8 @@ The decisions and their reasons are in [docs/plan/architecture.md](docs/plan/arc
 - Signup reveals whether an email is already registered, a deliberate trade-off.
 - The single-node database has no redundancy.
 
+What would change if the project had to scale, and what would trigger each change, is in the [evolution register](docs/plan/evolution.md).
+
 ## More documentation
 
 - [AI.md](AI.md): where AI assisted, what worked, and what was corrected.
