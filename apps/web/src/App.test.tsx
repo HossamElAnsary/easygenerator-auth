@@ -76,6 +76,34 @@ describe('browser auth state', () => {
       await screen.findByRole('heading', { name: 'Sign in' }),
     ).toBeTruthy();
   });
+  it('shows no public form before the first session answer, then redirects an authenticated visitor', async () => {
+    const pending = deferred<typeof user>();
+    vi.spyOn(authApi, 'me').mockReturnValue(pending.promise);
+    renderApp('/signin');
+    expect(screen.getByText('Checking your session…')).toBeTruthy();
+    expect(screen.queryByRole('heading')).toBeNull();
+    expect(screen.queryByLabelText('Email')).toBeNull();
+    await act(async () => pending.resolve(user));
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Welcome to the application.',
+      }),
+    ).toBeTruthy();
+  });
+  it('disables sign-out and says so while logout is pending', async () => {
+    vi.spyOn(authApi, 'me').mockResolvedValue(user);
+    const pending = deferred<undefined>();
+    vi.spyOn(authApi, 'logout').mockReturnValue(pending.promise);
+    renderApp('/app');
+    await screen.findByText('Welcome to the application.');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(
+      screen
+        .getByRole('button', { name: 'Signing out…' })
+        .hasAttribute('disabled'),
+    ).toBe(true);
+    await act(async () => pending.resolve(undefined));
+  });
   it('awaits signin, prevents duplicate actions, normalizes email, preserves password and keeps caches credential-free', async () => {
     const me = vi.spyOn(authApi, 'me').mockImplementation(anonymous);
     const pending = deferred<typeof user>();
@@ -183,6 +211,9 @@ describe('browser auth state', () => {
     expect(
       await screen.findByText('The service is unavailable. Try again.'),
     ).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toBe(
+      'The service is unavailable. Try again.',
+    );
     expect(screen.getByText('Welcome to the application.')).toBeTruthy();
     client.setQueryData(['private'], user);
     me.mockImplementation(anonymous);
@@ -198,6 +229,22 @@ describe('browser auth state', () => {
         .every((m) => m.state.variables === undefined),
     ).toBe(true);
   });
+  it('keeps a logout failure visible through the session recheck that follows it', async () => {
+    const me = vi.spyOn(authApi, 'me').mockResolvedValue(user);
+    vi.spyOn(authApi, 'logout').mockRejectedValue(new ApiError('unavailable'));
+    renderApp('/app');
+    await screen.findByText('Welcome to the application.');
+    const check = deferred<typeof user>();
+    me.mockReturnValue(check.promise);
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    await screen.findByText('Checking your session…');
+    expect(screen.queryByText('Welcome to the application.')).toBeNull();
+    await act(async () => check.resolve(user));
+    await screen.findByText('Welcome to the application.');
+    expect(screen.getByRole('alert').textContent).toBe(
+      'The service is unavailable. Try again.',
+    );
+  });
   it('settles offline checks and submissions without queuing a POST on reconnect', async () => {
     vi.spyOn(authApi, 'me').mockImplementation(anonymous);
     const signin = vi
@@ -211,15 +258,37 @@ describe('browser auth state', () => {
     await act(async () => onlineManager.setOnline(true));
     expect(signin).toHaveBeenCalledTimes(1);
   });
+  it('announces request errors as alerts and names the password toggle only by its action', async () => {
+    vi.spyOn(authApi, 'me').mockImplementation(anonymous);
+    vi.spyOn(authApi, 'signin').mockRejectedValue(
+      new ApiError('credentials', {
+        message: 'Email or password is incorrect.',
+        code: 'INVALID_CREDENTIALS',
+      }),
+    );
+    renderApp();
+    await fillSignin();
+    const toggle = screen.getByRole('button', { name: 'Show password' });
+    expect(toggle.hasAttribute('aria-pressed')).toBe(false);
+    await userEvent.click(toggle);
+    expect(
+      screen
+        .getByRole('button', { name: 'Hide password' })
+        .hasAttribute('aria-pressed'),
+    ).toBe(false);
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Email or password is incorrect.',
+    );
+  });
   it('maps server errors, focuses first invalid field, and clears errors on correction', async () => {
     vi.spyOn(authApi, 'me').mockImplementation(anonymous);
     vi.spyOn(authApi, 'signin').mockRejectedValue(
-      new ApiError(
-        'validation',
-        'Please check the highlighted fields.',
-        'VALIDATION_ERROR',
-        { email: ['Server email error.'] },
-      ),
+      new ApiError('validation', {
+        message: 'Please check the highlighted fields.',
+        code: 'VALIDATION_ERROR',
+        fields: { email: ['Server email error.'] },
+      }),
     );
     renderApp();
     await fillSignin('x');
@@ -319,17 +388,16 @@ describe('browser auth state', () => {
   });
   it('honors the rate-limit wait through input correction and requires manual resubmission', async () => {
     vi.spyOn(authApi, 'me').mockImplementation(anonymous);
-    const signin = vi
-      .spyOn(authApi, 'signin')
-      .mockRejectedValue(
-        new ApiError(
-          'rate-limit',
-          'Too many requests.',
-          'RATE_LIMITED',
-          undefined,
-          1,
-        ),
-      );
+    // Built per call, as the client builds one per response: retryAt starts then.
+    const signin = vi.spyOn(authApi, 'signin').mockImplementation(() =>
+      Promise.reject(
+        new ApiError('rate-limit', {
+          message: 'Too many requests.',
+          code: 'RATE_LIMITED',
+          retryAfter: 1,
+        }),
+      ),
+    );
     renderApp();
     await fillSignin();
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
@@ -353,13 +421,13 @@ describe('browser auth state', () => {
   });
   it('honors Retry-After on session verification before offering Retry', async () => {
     vi.spyOn(authApi, 'me')
-      .mockRejectedValueOnce(
-        new ApiError(
-          'rate-limit',
-          'Too many requests.',
-          'RATE_LIMITED',
-          undefined,
-          1,
+      .mockImplementationOnce(() =>
+        Promise.reject(
+          new ApiError('rate-limit', {
+            message: 'Too many requests.',
+            code: 'RATE_LIMITED',
+            retryAfter: 1,
+          }),
         ),
       )
       .mockImplementation(anonymous);

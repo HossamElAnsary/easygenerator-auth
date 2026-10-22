@@ -1,11 +1,14 @@
 /**
- * The API's module boundaries (Engineering E02, Verification T18). `npm run
- * lint` runs these over apps/api/src, unit tests beside their sources
+ * The API's module boundaries (Engineering E02, Verification T18) and the web
+ * app's layers (Engineering E05, Verification T20). `npm run lint` runs these
+ * over apps/api/src and apps/web/src, unit tests beside their sources
  * included; the integration suites in apps/api/test may import internals.
  */
 const SRC = '^apps/api/src/';
 const MODULES = `${SRC}modules/`;
 const MODULE_INDEX = `${MODULES}[^/]+/index\\.ts$`;
+const WEB = '^apps/web/src/';
+const EITHER = '^apps/(api|web)/src/';
 
 export default {
   forbidden: [
@@ -85,18 +88,34 @@ export default {
       to: { path: '(^|/)node_modules/argon2/' },
     },
     {
+      name: 'web-ui-imports-transport-or-auth',
+      severity: 'error',
+      comment:
+        'E05: ui/ is presentational and reaches neither the API client nor the auth screens, directly or through another module.',
+      from: { path: `${WEB}ui/` },
+      to: { path: `${WEB}(api|auth)/`, reachable: true },
+    },
+    {
+      name: 'web-transport-imports-ui-or-auth',
+      severity: 'error',
+      comment:
+        'E05: api/ is transport and reaches neither the auth screens nor ui/, directly or through another module.',
+      from: { path: `${WEB}api/` },
+      to: { path: `${WEB}(auth|ui)/`, reachable: true },
+    },
+    {
       name: 'production-imports-test',
       severity: 'error',
       comment:
-        'Engineering E06: unit tests sit beside their sources, and production code never imports one.',
-      from: { path: SRC, pathNot: '\\.test\\.ts$' },
-      to: { path: '\\.test\\.ts$' },
+        'Engineering E06: unit tests sit beside their sources, and production code never imports one or the web test setup.',
+      from: { path: EITHER, pathNot: ['\\.test\\.tsx?$', `${WEB}test/`] },
+      to: { path: ['\\.test\\.tsx?$', `${WEB}test/`] },
     },
     {
       name: 'no-circular',
       severity: 'error',
-      comment: 'E02 rule 5: no import cycles.',
-      from: { path: SRC },
+      comment: 'E02 rule 5: no import cycles (in the web app as well).',
+      from: { path: EITHER },
       to: { circular: true },
     },
     {
@@ -104,7 +123,7 @@ export default {
       severity: 'error',
       comment:
         'Every import must resolve, or the rules above could pass by not seeing it. The contracts package resolves only after its build, which lint precedes.',
-      from: { path: SRC },
+      from: { path: EITHER },
       to: { couldNotResolve: true, pathNot: '^@easy-generator/contracts$' },
     },
   ],

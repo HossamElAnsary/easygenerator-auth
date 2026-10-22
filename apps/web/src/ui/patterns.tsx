@@ -6,7 +6,6 @@ import {
   type ReactNode,
 } from 'react';
 import { useLocation } from 'react-router';
-import { ApiError } from '../api/client';
 import styles from '../App.module.css';
 
 export function Heading({ children }: { children: ReactNode }) {
@@ -56,35 +55,19 @@ export function Field({
     </div>
   );
 }
-export function PasswordField({
-  signup,
-  ...props
-}: Omit<Parameters<typeof Field>[0], 'label' | 'type'> & { signup: boolean }) {
+export function PasswordField(
+  props: Omit<Parameters<typeof Field>[0], 'label' | 'type'> & {
+    autoComplete: 'new-password' | 'current-password';
+  },
+) {
   const [visible, setVisible] = useState(false);
   return (
     <div>
-      <Field
-        {...props}
-        label="Password"
-        type={visible ? 'text' : 'password'}
-        autoComplete={signup ? 'new-password' : 'current-password'}
-        hint={
-          signup ? (
-            <>
-              <span>Use 8–128 characters, including:</span>
-              <ul>
-                <li>At least one letter</li>
-                <li>At least one number</li>
-                <li>At least one special character</li>
-              </ul>
-            </>
-          ) : undefined
-        }
-      />
+      <Field {...props} label="Password" type={visible ? 'text' : 'password'} />
+      {/* The label names the action, so it carries no aria-pressed state. */}
       <button
         type="button"
         className={styles.secondary}
-        aria-pressed={visible}
         aria-controls={props.id}
         onClick={() => setVisible(!visible)}
       >
@@ -93,15 +76,6 @@ export function PasswordField({
     </div>
   );
 }
-export function errorMessage(error: unknown): string {
-  if (!(error instanceof ApiError))
-    return 'The service is unavailable. Try again.';
-  if (error.kind === 'rate-limit') {
-    const seconds = error.retryAfter ?? 60;
-    return `Too many requests. Try again in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}.`;
-  }
-  return error.message;
-}
 export function Notice({ children }: { children: ReactNode }) {
   return (
     <p className={styles.notice} role="status">
@@ -109,44 +83,12 @@ export function Notice({ children }: { children: ReactNode }) {
     </p>
   );
 }
-export function useRequestError() {
-  const [error, setError] = useState<unknown>(null);
-  const [blockedUntil, setBlockedUntil] = useState(0);
-  const blocked = useWaitUntil(blockedUntil);
-  return {
-    error,
-    blocked,
-    clear: () => setError(null),
-    fail: (failure: unknown) => {
-      setError(failure);
-      if (failure instanceof ApiError && failure.kind === 'rate-limit') {
-        setBlockedUntil(Date.now() + (failure.retryAfter ?? 60) * 1000);
-      }
-    },
-  };
-}
-
-// setTimeout fires at once for a longer delay, so longer waits take steps.
-const MAX_TIMER_DELAY = 2 ** 31 - 1;
-
-export function useWaitUntil(until: number) {
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    if (!until) return;
-    let timer: ReturnType<typeof setTimeout>;
-    // Timers and Date.now() use different clocks, so a timer can fire just
-    // before the deadline; re-arm until the deadline has really passed.
-    const wake = () => {
-      const remaining = until - Date.now();
-      if (remaining > 0)
-        timer = setTimeout(wake, Math.min(remaining, MAX_TIMER_DELAY));
-      else setNow(Date.now());
-    };
-    timer = setTimeout(
-      wake,
-      Math.min(Math.max(0, until - Date.now()), MAX_TIMER_DELAY),
-    );
-    return () => clearTimeout(timer);
-  }, [until]);
-  return until > now;
+// A status region inserted with its text is announced unreliably; an alert is
+// announced on insertion. Use it for the result of a user's own request.
+export function Alert({ children }: { children: ReactNode }) {
+  return (
+    <p className={styles.notice} role="alert">
+      {children}
+    </p>
+  );
 }

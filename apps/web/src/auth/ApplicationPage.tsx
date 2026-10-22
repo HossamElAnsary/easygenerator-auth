@@ -1,41 +1,37 @@
-import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { useAuth } from './AuthProvider';
-import { SessionNotice } from './SessionNotice';
-import { Heading, Notice, errorMessage, useRequestError } from '../ui/patterns';
+import { RequireSession } from './guards';
+import { Alert, Heading } from '../ui/patterns';
+import { errorMessage, useRequestError } from './request-error';
 import styles from '../App.module.css';
 
 export function ApplicationPage() {
   const auth = useAuth();
   const navigate = useNavigate();
-  const [pending, setPending] = useState(false);
+  // Held above the guard: the session check after a failed logout unmounts
+  // the guarded content, and the failure must still show once it returns.
   const request = useRequestError();
-  if (auth.status === 'anonymous') return <Navigate to="/signin" replace />;
-  if (auth.status !== 'authenticated') return <SessionNotice />;
   async function logout() {
-    if (pending || request.blocked) return;
-    setPending(true);
+    if (auth.actionPending || request.blocked) return;
     request.clear();
     try {
       await auth.logout();
       void navigate('/signin', { replace: true });
     } catch (error) {
       request.fail(error);
-    } finally {
-      setPending(false);
     }
   }
   return (
-    <>
+    <RequireSession>
       <Heading>Welcome to the application.</Heading>
-      {request.error != null && <Notice>{errorMessage(request.error)}</Notice>}
+      {request.error != null && <Alert>{errorMessage(request.error)}</Alert>}
       <button
         className={styles.primary}
-        disabled={pending || request.blocked}
+        disabled={auth.actionPending || request.blocked}
         onClick={() => void logout()}
       >
-        {pending ? 'Signing out…' : 'Sign out'}
+        {auth.actionPending ? 'Signing out…' : 'Sign out'}
       </button>
-    </>
+    </RequireSession>
   );
 }

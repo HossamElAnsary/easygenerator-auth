@@ -114,9 +114,10 @@ test('shared validation, Unicode boundaries, focus, password visibility and sign
     'type',
     'text',
   );
+  // The label names the action; a pressed state as well would contradict it.
   await expect(
     page.getByRole('button', { name: 'Hide password' }),
-  ).toHaveAttribute('aria-pressed', 'true');
+  ).not.toHaveAttribute('aria-pressed');
   await page
     .getByRole('button', { name: 'Create an account', exact: true })
     .click();
@@ -145,6 +146,9 @@ test('invalid credentials use the generic error even for a short password', asyn
   await page.getByLabel('Password', { exact: true }).fill('x');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByText('Email or password is incorrect.')).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveText(
+    'Email or password is incorrect.',
+  );
   await expect(page.getByLabel('Password', { exact: true })).toHaveValue('x');
 });
 

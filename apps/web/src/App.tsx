@@ -1,28 +1,12 @@
-import { Link, Navigate, Route, Routes } from 'react-router';
-import { AuthProvider, useAuth } from './auth/AuthProvider';
-import { AuthForm } from './auth/AuthForm';
+import { Link, Route, Routes } from 'react-router';
+import { AuthProvider } from './auth/AuthProvider';
 import { ApplicationPage } from './auth/ApplicationPage';
-import { SessionNotice } from './auth/SessionNotice';
+import { Home, PublicOnly } from './auth/guards';
+import { SigninForm } from './auth/SigninForm';
+import { SignupForm } from './auth/SignupForm';
 import { Heading } from './ui/patterns';
 import styles from './App.module.css';
 
-function PublicPage({ signup }: { signup: boolean }) {
-  const auth = useAuth();
-  if (auth.status === 'authenticated') return <Navigate to="/app" replace />;
-  if (!auth.hasResolved) return <SessionNotice />;
-  return <AuthForm signup={signup} />;
-}
-function Home() {
-  const auth = useAuth();
-  return auth.status === 'authenticated' || auth.status === 'anonymous' ? (
-    <Navigate
-      to={auth.status === 'authenticated' ? '/app' : '/signin'}
-      replace
-    />
-  ) : (
-    <SessionNotice />
-  );
-}
 export function App() {
   return (
     <AuthProvider>
@@ -33,11 +17,19 @@ export function App() {
             <Route path="/" element={<Home />} />
             <Route
               path="/signup"
-              element={<PublicPage key="signup" signup />}
+              element={
+                <PublicOnly>
+                  <SignupForm />
+                </PublicOnly>
+              }
             />
             <Route
               path="/signin"
-              element={<PublicPage key="signin" signup={false} />}
+              element={
+                <PublicOnly>
+                  <SigninForm />
+                </PublicOnly>
+              }
             />
             <Route path="/app" element={<ApplicationPage />} />
             <Route

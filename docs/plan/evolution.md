@@ -14,7 +14,7 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 
 | Stage | Situation | What changes |
 | --- | --- | --- |
-| **S1 — Today** | One API process behind a same-host proxy, a single-node replica set, one developer, local and Docker previews | Baseline v1.4 |
+| **S1 — Today** | One API process behind a same-host proxy, a single-node replica set, one developer, local and Docker previews | Baseline v1.5 |
 | **S2 — Public production** | Real users on a hosted HTTPS deployment | Recovery, abuse defense, backups, observability, and on-call become requirements |
 | **S3 — Horizontal scale** | More than one API instance | No correctness-relevant state may live in one process |
 | **S4 — Product growth** | More features, modules, or contributors than the assignment | Code organization and team boundaries start to matter |
@@ -27,6 +27,7 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 | [EV-TEST-02](#ev-test-02--per-module-tests-folder-when-a-second-unit-test-appears) | Per-module `tests/` folder when a second unit test appears | Rejected | — | S |
 | [EV-TEST-03](#ev-test-03--integration-suites-grouped-by-area) | Integration suites grouped by area | Deferred | S4 | S |
 | [EV-TEST-04](#ev-test-04--shared-contract-faithful-fakes-per-port) | Shared contract-faithful fakes per port | Deferred | S4 | S |
+| [EV-TEST-05](#ev-test-05--web-tests-split-by-component) | Web tests split by component | Rejected | — | S |
 | [EV-APP-01](#ev-app-01--an-application-layer-for-cross-module-use-cases) | An application layer for cross-module use cases | Deferred | S4 | M |
 | [EV-APP-02](#ev-app-02--entity-classes-for-domain-records) | Entity classes for domain records | Deferred | S4 | M |
 | [EV-APP-03](#ev-app-03--a-facade-per-module) | A facade per module | Deferred | S4 | S |
@@ -52,6 +53,13 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 | [EV-WEB-02](#ev-web-02--cross-tab-sign-out) | Cross-tab sign-out | Deferred | S4 | S |
 | [EV-WEB-03](#ev-web-03--a-component-library) | A component library | Deferred | S4 | M |
 | [EV-WEB-04](#ev-web-04--cross-browser-testing) | Cross-browser testing | Deferred | S2 | S |
+| [EV-WEB-05](#ev-web-05--a-smaller-validation-build) | A smaller validation build | Deferred | S2 | M |
+| [EV-WEB-06](#ev-web-06--route-level-code-splitting) | Route-level code splitting | Deferred | S4 | S |
+| [EV-WEB-07](#ev-web-07--react-routers-data-mode) | React Router's data mode | Deferred | S4 | M |
+| [EV-WEB-08](#ev-web-08--suspense-for-the-session-query) | Suspense for the session query | Rejected | — | M |
+| [EV-WEB-09](#ev-web-09--the-react-compiler-or-manual-memoization) | The React Compiler or manual memoization | Deferred | S4 | S |
+| [EV-WEB-10](#ev-web-10--a-generic-context-interface-and-compound-form-components) | A generic context interface and compound form components | Deferred | S4 | S |
+| [EV-WEB-11](#ev-web-11--an-accessibility-lint-plugin) | An accessibility lint plugin | Deferred | S4 | S |
 | [EV-DEL-01](#ev-del-01--continuous-deployment-published-images-and-releases) | Continuous deployment, published images, and releases | Deferred | S2 | M |
 
 ## Testing and code organization
@@ -87,6 +95,13 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 - **Trigger:** a second test file needs the same fake.
 - **Constraint:** the fake lives under `test/` or in a file the production build excludes; a fake under `src/` would be compiled into `dist/` and the Docker image.
 - **Source:** the test-placement challenge, 2026-10-22.
+
+### EV-TEST-05 — Web tests split by component
+
+- **Status:** Rejected.
+- **Proposal:** split `apps/web/src/App.test.tsx` (409 lines, 16 cases) into one test file per component as the components split in M10.
+- **Why rejected even at scale:** those cases render the whole application through its routes and assert what a user sees, so they survive any internal restructure; that is what makes M10's refactor safe. A test of one component's internals would have to change with every such refactor. New component-specific unit tests still sit beside their source (Engineering E06); only the route-level journey file stays whole.
+- **Source:** the frontend review, 2026-10-22 (Delivery change log).
 
 ## Application and domain
 
@@ -292,6 +307,66 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 - **Improvement:** Firefox and WebKit projects in Playwright, and a screen-reader pass.
 - **Trigger:** public users.
 - **Source:** README limitations.
+- **Note (v1.5):** M10 brings forward a VoiceOver spot check of its two accessibility fixes only; the full screen-reader pass and other browsers stay deferred.
+
+### EV-WEB-05 — A smaller validation build
+
+- **Status:** Deferred. **Stage:** S2. **Cost:** M.
+- **Today:** Zod is 19% of the single 131 KB (gzip) bundle, about 82 KB minified, measured in M10's review; React DOM is 49%.
+- **Improvement:** the shared contracts on `zod/mini`, Zod's tree-shakable build, which could remove much of that share.
+- **Why not now:** the contracts are shared with the API, whose validation pipe and tests depend on the classic API; the change crosses three workspaces for a page that loads once over a local network.
+- **Trigger:** a bundle-size budget, or measured slow first loads for real users on slow networks.
+- **Source:** the frontend review, 2026-10-22.
+
+### EV-WEB-06 — Route-level code splitting
+
+- **Status:** Deferred. **Stage:** S4. **Cost:** S.
+- **Today:** one JavaScript chunk; application code is 2.6% of it (about 10 KB minified).
+- **Why not now:** splitting four small routes would add a request on the way to signin to save a few kilobytes.
+- **Trigger:** a heavy screen that most visitors never open.
+- **Source:** the frontend review, 2026-10-22.
+
+### EV-WEB-07 — React Router's data mode
+
+- **Status:** Deferred. **Stage:** S4. **Cost:** M.
+- **Today:** declarative routes; the auth coordinator runs the session check on navigation through the one session query (Architecture A11).
+- **Improvement:** `createBrowserRouter` with loaders and actions owning route data.
+- **Why not now:** it would rewrite the most heavily tested coordination (stale-response guards, suspended checks during actions, preserved forms) for no change users could see.
+- **Trigger:** many routes that each load their own server data.
+- **Source:** the frontend review, 2026-10-22.
+
+### EV-WEB-08 — Suspense for the session query
+
+- **Status:** Rejected.
+- **Proposal:** `useSuspenseQuery` and Suspense boundaries for the session check.
+- **Why rejected even at scale:** a suspending background check would unmount the public forms Experience requires to stay mounted, with their entries, while a check runs; and the unavailable state needs Retry in place, not a thrown error. Suspense suits the first load of read-only data, which the session check is not.
+- **Source:** the frontend review, 2026-10-22.
+
+### EV-WEB-09 — The React Compiler or manual memoization
+
+- **Status:** Deferred. **Stage:** S4. **Cost:** S.
+- **Today:** the auth context value is a new object on each provider render, so about five small components re-render on navigation and query changes; nothing was measured as slow. Engineering E05 allows memoization only for a measured need.
+- **Improvement:** the React Compiler, which memoizes automatically, rather than hand-written `memo`/`useCallback`.
+- **Trigger:** a measured slow interaction, or screens expensive enough to profile.
+- **Source:** the frontend review, 2026-10-22.
+
+### EV-WEB-10 — A generic context interface and compound form components
+
+- **Status:** Deferred. **Stage:** S4. **Cost:** S.
+- **Today:** one auth provider with an explicit `AuthContextValue` type, and two forms composing one `AuthFormFrame` (M10).
+- **Improvement:** the composition skill's `state`/`actions`/`meta` context interface, so different providers can drive the same UI, and compound `Form.*` components.
+- **Why not now:** there is one provider and there are two forms; an interface with one implementation and a component set with two users add indirection without a second use.
+- **Trigger:** a second auth provider (for example a test or demo mode in the product), or a third form with the same frame.
+- **Source:** the frontend review, 2026-10-22.
+
+### EV-WEB-11 — An accessibility lint plugin
+
+- **Status:** Deferred. **Stage:** S4. **Cost:** S.
+- **Today:** native elements and labels, browser cases that check labels, focus, and keyboard use, and axe scans with no WCAG A/AA violation (T11).
+- **Improvement:** `eslint-plugin-jsx-a11y` in `npm run lint`.
+- **Why not now:** with five small screens the browser checks catch what the plugin would, and every new dependency must keep `npm audit` at 0.
+- **Trigger:** more screens or contributors, where review alone stops catching accessibility regressions.
+- **Source:** the frontend review, 2026-10-22.
 
 ## Delivery
 

@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useWaitUntil } from './patterns';
+import { useWaitUntil } from './request-error';
 
 describe('useWaitUntil', () => {
   afterEach(() => {

@@ -16,24 +16,51 @@ export type ErrorKind =
   | 'unavailable'
   | 'request';
 const unavailableMessage = 'The service is unavailable. Try again.';
+// The API always sends Retry-After; this covers a missing or unusable header.
+const DEFAULT_RETRY_AFTER_SECONDS = 60;
+
+const kinds: Partial<Record<ApiErrorCode, ErrorKind>> = {
+  VALIDATION_ERROR: 'validation',
+  INVALID_CREDENTIALS: 'credentials',
+  UNAUTHENTICATED: 'unauthenticated',
+  EMAIL_IN_USE: 'conflict',
+  RATE_LIMITED: 'rate-limit',
+  SERVICE_UNAVAILABLE: 'unavailable',
+  INTERNAL_ERROR: 'unavailable',
+};
 
 // Never retain request arguments, raw responses, or native error causes here.
 export class ApiError extends Error {
+  readonly code: ApiErrorCode | undefined;
+  readonly fields: ApiErrorResponse['error']['fields'];
+  readonly requestId: string | undefined;
+  // Both are set exactly when kind is 'rate-limit': the wait the server asked
+  // for, in whole seconds, and the time it ends.
+  readonly retryAfter: number | undefined;
   readonly retryAt: number | undefined;
   constructor(
     readonly kind: ErrorKind,
-    message = unavailableMessage,
-    readonly code?: ApiErrorCode,
-    readonly fields?: ApiErrorResponse['error']['fields'],
-    readonly retryAfter?: number,
-    readonly requestId?: string,
+    options: {
+      message?: string;
+      code?: ApiErrorCode;
+      fields?: ApiErrorResponse['error']['fields'];
+      retryAfter?: number;
+      requestId?: string;
+    } = {},
   ) {
-    super(message);
+    super(options.message ?? unavailableMessage);
     this.name = 'ApiError';
-    this.retryAt =
+    this.code = options.code;
+    this.fields = options.fields;
+    this.requestId = options.requestId;
+    this.retryAfter =
       kind === 'rate-limit'
-        ? Date.now() + (retryAfter ?? 60) * 1000
+        ? (options.retryAfter ?? DEFAULT_RETRY_AFTER_SECONDS)
         : undefined;
+    this.retryAt =
+      this.retryAfter === undefined
+        ? undefined
+        : Date.now() + this.retryAfter * 1000;
   }
 }
 
@@ -43,39 +70,33 @@ function decodeError(response: Response, body: unknown): ApiError {
   const { code, message, fields, requestId } = parsed.data.error;
   if (code === 'UNAUTHENTICATED' && response.status !== 401)
     return new ApiError('unavailable');
-  const kinds: Partial<Record<ApiErrorCode, ErrorKind>> = {
-    VALIDATION_ERROR: 'validation',
-    INVALID_CREDENTIALS: 'credentials',
-    UNAUTHENTICATED: 'unauthenticated',
-    EMAIL_IN_USE: 'conflict',
-    RATE_LIMITED: 'rate-limit',
-    SERVICE_UNAVAILABLE: 'unavailable',
-    INTERNAL_ERROR: 'unavailable',
-  };
   const kind =
     response.status >= 500 ? 'unavailable' : (kinds[code] ?? 'request');
   const seconds = Number(response.headers.get('Retry-After'));
-  const retryAfter =
-    kind === 'rate-limit'
-      ? Number.isFinite(seconds) && seconds > 0
-        ? Math.ceil(seconds)
-        : 60
-      : undefined;
-  return new ApiError(
-    kind,
-    kind === 'unavailable' ? unavailableMessage : message,
+  return new ApiError(kind, {
+    ...(kind === 'unavailable' ? {} : { message }),
     code,
-    kind === 'validation' ? fields : undefined,
-    retryAfter,
+    ...(kind === 'validation' ? { fields } : {}),
+    ...(Number.isFinite(seconds) && seconds > 0
+      ? { retryAfter: Math.ceil(seconds) }
+      : {}),
     requestId,
-  );
+  });
 }
 
 async function request(
   path: string,
-  successStatus: number,
-  body?: unknown,
-  signal?: AbortSignal,
+  {
+    method,
+    successStatus,
+    body,
+    signal,
+  }: {
+    method: 'GET' | 'POST';
+    successStatus: number;
+    body?: unknown;
+    signal?: AbortSignal | undefined;
+  },
 ) {
   const timeout = new AbortController();
   const timer = setTimeout(() => timeout.abort(), 15_000);
@@ -84,10 +105,10 @@ async function request(
     : timeout.signal;
   try {
     const response = await fetch(`/api/auth/${path}`, {
-      method: body === undefined ? 'GET' : 'POST',
+      method,
       credentials: 'same-origin',
       signal: combined,
-      ...(body === undefined
+      ...(method === 'GET'
         ? {}
         : {
             headers: {
@@ -116,21 +137,20 @@ async function request(
   }
 }
 
-async function userRequest(
-  path: string,
-  status: number,
-  body?: unknown,
-  signal?: AbortSignal,
-) {
-  const user = await request(path, status, body, signal);
+async function userRequest(...args: Parameters<typeof request>) {
+  const user = await request(...args);
   if (!user) throw new ApiError('unavailable');
   return user;
 }
 export const authApi = {
-  signup: (input: SignupRequest) => userRequest('signup', 201, input),
-  signin: (input: SigninRequest) => userRequest('signin', 200, input),
-  me: (signal?: AbortSignal) => userRequest('me', 200, undefined, signal),
+  signup: (input: SignupRequest) =>
+    userRequest('signup', { method: 'POST', successStatus: 201, body: input }),
+  signin: (input: SigninRequest) =>
+    userRequest('signin', { method: 'POST', successStatus: 200, body: input }),
+  me: (signal?: AbortSignal) =>
+    userRequest('me', { method: 'GET', successStatus: 200, signal }),
   logout: async () => {
-    await request('logout', 204, {});
+    // The logout schema is an empty object, so the request still has a body.
+    await request('logout', { method: 'POST', successStatus: 204, body: {} });
   },
 };
