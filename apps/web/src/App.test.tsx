@@ -233,11 +233,10 @@ describe('browser auth state', () => {
   it('announces request errors as alerts and names the password toggle only by its action', async () => {
     vi.spyOn(authApi, 'me').mockImplementation(anonymous);
     vi.spyOn(authApi, 'signin').mockRejectedValue(
-      new ApiError(
-        'credentials',
-        'Email or password is incorrect.',
-        'INVALID_CREDENTIALS',
-      ),
+      new ApiError('credentials', {
+        message: 'Email or password is incorrect.',
+        code: 'INVALID_CREDENTIALS',
+      }),
     );
     renderApp();
     await fillSignin();
@@ -257,12 +256,11 @@ describe('browser auth state', () => {
   it('maps server errors, focuses first invalid field, and clears errors on correction', async () => {
     vi.spyOn(authApi, 'me').mockImplementation(anonymous);
     vi.spyOn(authApi, 'signin').mockRejectedValue(
-      new ApiError(
-        'validation',
-        'Please check the highlighted fields.',
-        'VALIDATION_ERROR',
-        { email: ['Server email error.'] },
-      ),
+      new ApiError('validation', {
+        message: 'Please check the highlighted fields.',
+        code: 'VALIDATION_ERROR',
+        fields: { email: ['Server email error.'] },
+      }),
     );
     renderApp();
     await fillSignin('x');
@@ -362,17 +360,13 @@ describe('browser auth state', () => {
   });
   it('honors the rate-limit wait through input correction and requires manual resubmission', async () => {
     vi.spyOn(authApi, 'me').mockImplementation(anonymous);
-    const signin = vi
-      .spyOn(authApi, 'signin')
-      .mockRejectedValue(
-        new ApiError(
-          'rate-limit',
-          'Too many requests.',
-          'RATE_LIMITED',
-          undefined,
-          1,
-        ),
-      );
+    const signin = vi.spyOn(authApi, 'signin').mockRejectedValue(
+      new ApiError('rate-limit', {
+        message: 'Too many requests.',
+        code: 'RATE_LIMITED',
+        retryAfter: 1,
+      }),
+    );
     renderApp();
     await fillSignin();
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
@@ -397,13 +391,11 @@ describe('browser auth state', () => {
   it('honors Retry-After on session verification before offering Retry', async () => {
     vi.spyOn(authApi, 'me')
       .mockRejectedValueOnce(
-        new ApiError(
-          'rate-limit',
-          'Too many requests.',
-          'RATE_LIMITED',
-          undefined,
-          1,
-        ),
+        new ApiError('rate-limit', {
+          message: 'Too many requests.',
+          code: 'RATE_LIMITED',
+          retryAfter: 1,
+        }),
       )
       .mockImplementation(anonymous);
     renderApp();

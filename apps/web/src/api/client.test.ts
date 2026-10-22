@@ -76,6 +76,21 @@ describe('auth HTTP client', () => {
       requestId: 'request-1',
     });
   });
+  it('shows server messages for client errors but the generic one for server errors', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(response(failure('EMAIL_IN_USE'), 409))
+        .mockResolvedValueOnce(response(failure('SERVICE_UNAVAILABLE'), 503)),
+    );
+    await expect(authApi.me()).rejects.toMatchObject({
+      message: 'Safe message',
+    });
+    await expect(authApi.me()).rejects.toMatchObject({
+      message: 'The service is unavailable. Try again.',
+    });
+  });
   it('never treats a non-401 response as confirmed anonymous', async () => {
     vi.stubGlobal(
       'fetch',
@@ -102,6 +117,25 @@ describe('auth HTTP client', () => {
       kind: 'rate-limit',
       retryAfter: 37,
     });
+  });
+  it('waits 60 seconds when a rate limit has no usable Retry-After', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(response(failure('RATE_LIMITED'), 429))
+        .mockResolvedValueOnce(
+          response(failure('RATE_LIMITED'), 429, { 'Retry-After': 'soon' }),
+        ),
+    );
+    for (let i = 0; i < 2; i++) {
+      const before = Date.now();
+      const error = await authApi.me().catch((failure: unknown) => failure);
+      expect(error).toMatchObject({ kind: 'rate-limit', retryAfter: 60 });
+      const { retryAt } = error as ApiError;
+      expect(retryAt).toBeGreaterThanOrEqual(before + 60_000);
+      expect(retryAt).toBeLessThanOrEqual(Date.now() + 60_000);
+    }
   });
   it('treats malformed HTTP errors and network failures as unavailable without retaining raw errors', async () => {
     vi.stubGlobal(

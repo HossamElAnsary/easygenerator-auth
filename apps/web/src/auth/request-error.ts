@@ -4,8 +4,8 @@ import { ApiError } from '../api/client';
 export function errorMessage(error: unknown): string {
   if (!(error instanceof ApiError))
     return 'The service is unavailable. Try again.';
-  if (error.kind === 'rate-limit') {
-    const seconds = error.retryAfter ?? 60;
+  if (error.retryAfter !== undefined) {
+    const seconds = error.retryAfter;
     return `Too many requests. Try again in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}.`;
   }
   return error.message;
@@ -21,8 +21,8 @@ export function useRequestError() {
     clear: () => setError(null),
     fail: (failure: unknown) => {
       setError(failure);
-      if (failure instanceof ApiError && failure.kind === 'rate-limit') {
-        setBlockedUntil(Date.now() + (failure.retryAfter ?? 60) * 1000);
+      if (failure instanceof ApiError && failure.retryAt !== undefined) {
+        setBlockedUntil(failure.retryAt);
       }
     },
   };

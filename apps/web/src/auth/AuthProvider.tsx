@@ -98,7 +98,9 @@ function useCoordinator(): AuthContextValue {
 
   async function exclusive<T>(action: () => Promise<T>): Promise<T> {
     if (active.current)
-      throw new ApiError('request', 'Please wait for the current request.');
+      throw new ApiError('request', {
+        message: 'Please wait for the current request.',
+      });
     active.current = true;
     // Preserve the verified UI state, not merely the presence of cached data.
     setActionStatus(verificationStatus);
