@@ -8,8 +8,8 @@ import {
   Module,
   Post,
 } from '@nestjs/common';
-import { CurrentUser } from '../../src/auth/current-user.decorator.js';
-import { Public } from '../../src/auth/public.decorator.js';
+import { CurrentUser } from '../../src/modules/auth/current-user.decorator.js';
+import { Public } from '../../src/modules/auth/public.decorator.js';
 
 /** Counts handler invocations, so tests can prove a rejected request never ran. */
 @Injectable()

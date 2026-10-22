@@ -1,5 +1,5 @@
 import { StandardSchemaValidationPipe } from '@nestjs/common';
-import { RequestValidationError } from '../common/errors.js';
+import { RequestValidationError } from './request-errors.js';
 
 /** The structural subset of a Standard Schema issue that we read. */
 interface SchemaIssue {

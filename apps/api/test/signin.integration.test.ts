@@ -4,7 +4,7 @@ import {
   userResponseSchema,
 } from '@easy-generator/contracts';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { PasswordHasher } from '../src/auth/password-hasher.js';
+import { PasswordHasher } from '../src/modules/auth/password-hasher.js';
 import {
   api,
   clientIp,

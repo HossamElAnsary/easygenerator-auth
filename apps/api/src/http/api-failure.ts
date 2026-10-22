@@ -5,12 +5,14 @@ import {
   DependencyUnavailableError,
   EmailInUseError,
   InvalidCredentialsError,
+  UnauthenticatedError,
+} from '../common/errors.js';
+import { isDatabaseUnavailable } from '../infrastructure/database/database-errors.js';
+import {
   RequestForbiddenError,
   RequestValidationError,
-  UnauthenticatedError,
   UnsupportedMediaTypeError,
-} from '../common/errors.js';
-import { isDatabaseUnavailable } from '../database/database-errors.js';
+} from './request-errors.js';
 
 export interface ApiFailure {
   status: number;

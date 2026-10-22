@@ -1,5 +1,6 @@
 import { createApplication } from './application.js';
 import { LISTEN_HOST, validateRuntimeConfig } from './config/runtime-config.js';
+import { HEADERS_TIMEOUT_MS, REQUEST_TIMEOUT_MS } from './http/limits.js';
 
 async function bootstrap(): Promise<void> {
   const config = validateRuntimeConfig(process.env);
@@ -7,8 +8,8 @@ async function bootstrap(): Promise<void> {
   app.enableShutdownHooks();
   try {
     const server = await app.listen(config.port, LISTEN_HOST);
-    server.requestTimeout = 15000;
-    server.headersTimeout = 10000;
+    server.requestTimeout = REQUEST_TIMEOUT_MS;
+    server.headersTimeout = HEADERS_TIMEOUT_MS;
     console.info('API ready.');
   } catch {
     await app.close();

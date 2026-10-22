@@ -63,12 +63,13 @@ npm run check
 
 | Command             | Runs                                                                 |
 | ------------------- | -------------------------------------------------------------------- |
-| `npm run lint`      | ESLint and the Prettier check                                        |
+| `npm run lint`      | ESLint, the API boundary rules, and the Prettier check               |
 | `npm run typecheck` | Strict TypeScript for every workspace                                |
 | `npm test`          | Schema, API integration (against real MongoDB), and web tests        |
 | `npm run test:e2e`  | A production build, then the Chromium journeys                       |
 | `npm run check`     | All of the above                                                     |
 | `npm run format`    | Formats the files the lint step checks (the only command that edits) |
+| `npm run bench`     | The local load baseline, described in docs/development.md            |
 
 Tests need the MongoDB replica set from the setup above, and each run uses its own generated databases. Stop `npm run dev` or `npm run preview` first, because the browser tests use port 3000. Single tests, test isolation, and CI are described in [docs/development.md](docs/development.md).
 
@@ -104,7 +105,7 @@ All routes are under `/api`. Every POST needs `Origin` equal to `APP_ORIGIN`, `X
 
 ```text
 apps/web             React UI (Vite, React Router, React Hook Form, TanStack Query)
-apps/api             NestJS API (auth, users, sessions, HTTP pipeline, startup)
+apps/api             NestJS API: modules/ (auth, users, sessions, health), http/, infrastructure/, config/
 packages/contracts   Zod schemas and types shared by the UI and the API
 tests/e2e            Playwright browser journeys
 docker/              Dockerfiles for the mongodb, app, and proxy images
@@ -129,6 +130,8 @@ The decisions and their reasons are in [docs/plan/architecture.md](docs/plan/arc
 - Rate-limit counters live in memory in one process. Docker Desktop may count every local browser as one client.
 - Signup reveals whether an email is already registered, a deliberate trade-off.
 - The single-node database has no redundancy.
+
+What would change if the project had to scale, and what would trigger each change, is in the [evolution register](docs/plan/evolution.md).
 
 ## More documentation
 

@@ -2,7 +2,7 @@ import type { RequestHandler } from 'express';
 import {
   RequestForbiddenError,
   UnsupportedMediaTypeError,
-} from '../common/errors.js';
+} from './request-errors.js';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 

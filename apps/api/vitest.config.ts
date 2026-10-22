@@ -13,7 +13,8 @@ export default defineConfig({
   ],
   test: {
     environment: 'node',
-    include: ['test/**/*.test.ts'],
+    // Unit tests sit beside their sources; integration suites live in test/.
+    include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
     setupFiles: ['test/setup.ts'],
     // Cases drive the real app: Argon2 hashing plus journaled majority writes
     // to MongoDB. Where test workers and the database share a few CPUs, as on

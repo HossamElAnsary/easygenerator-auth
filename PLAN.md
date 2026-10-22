@@ -1,8 +1,8 @@
 # Authentication Application Plan
 
-Baseline: **v1.3 — 2026-10-21** (v1.2 of 2026-10-20 plus B07, a Docker-only run, and a restructured README)
+Baseline: **v1.4 — 2026-10-21** (v1.3 plus B08, enforced backend module boundaries, and B09, measured backend performance; planned on the branch `refactor/m8-backend-structure`)
 
-Status: **M1 foundation, M2 authentication API, M3 browser journey, M4 quality and CI, and M5 submission readiness are complete, with evidence recorded in Delivery and Verification. M6 made the GitHub repository public and verified it, and CI passes on the published revision. Baseline v1.3 added M7, a Docker-only run and a shorter README, which is complete and verified. The project is ready for handoff; it is not submitted until the recruiter link handoff is performed.**
+Status: **M1 foundation, M2 authentication API, M3 browser journey, M4 quality and CI, and M5 submission readiness are complete, with evidence recorded in Delivery and Verification. M6 made the GitHub repository public and verified it, and CI passes on the published revision. Baseline v1.3 added M7, a Docker-only run and a shorter README, which is complete and verified. The project is ready for handoff; it is not submitted until the recruiter link handoff is performed. Baseline v1.4 begins a backend optimization phase: M8 (module boundaries) and M9 (measured performance) are verified on the branch `refactor/m8-backend-structure`, the user kept linearizable session reads, and `main` is unchanged.**
 
 ## Objective
 
@@ -22,6 +22,7 @@ Agent working instructions live in [AGENTS.md](AGENTS.md). This plan and its lin
 | [Experience](docs/plan/experience.md) | Screens, navigation, session states, form behavior, accessibility, and visual direction |
 | [Delivery](docs/plan/delivery.md) | Ordered work, dependencies, milestone status, risks, and change history |
 | [Verification](docs/plan/verification.md) | Acceptance checks, evidence, and release criteria |
+| [Evolution register](docs/plan/evolution.md) | Improvements weighed and deferred or rejected, by layer, with the scale stage and trigger that would bring each back (from v1.4) |
 | [AI assistance record](AI.md) | Actual AI involvement and engineering corrections, updated during the work |
 
 ## Source of truth and change control
@@ -46,10 +47,10 @@ Agent working instructions live in [AGENTS.md](AGENTS.md). This plan and its lin
 | Authorization | Authentication required by default for API handlers; own-profile access; no RBAC | No distinct business roles or privileged operations in the brief |
 | Data consistency | Atomic document writes, explicit read/write concerns, no multi-document transaction | Each current mutation changes one document; session reads honor confirmed revocation |
 | Database setup | One-node replica set locally/in CI; external replica set for production | Exercise selected concern settings without claiming local redundancy/failover coverage |
-| Code structure | Focused Nest providers with composition/DI; functional React components/hooks | Apply SOLID through concrete responsibility and dependency boundaries |
+| Code structure | Focused Nest providers with composition/DI; functional React components/hooks. From v1.4 the API is a modular monolith with `index.ts` module surfaces, repository ports with MongoDB adapters, and dependency rules enforced in lint | Apply SOLID through concrete responsibility and dependency boundaries; Engineering E02 (B08, T18) |
 | Signup completion | Redirect to signin; no automatic session | Makes the two required flows explicit |
 | Protected resource | `GET /api/auth/me` | Supplies authenticated user data and enforces backend access |
-| Selected extras | Logout, focused tests, basic CI, safe logs, Markdown API documentation, Docker-only run (v1.3) | Useful evidence of quality without a larger product; the Docker run was the user's request |
+| Selected extras | Logout, focused tests, basic CI, safe logs, Markdown API documentation, Docker-only run (v1.3), enforced backend boundaries and a measured performance baseline (v1.4) | Useful evidence of quality without a larger product; the Docker run was the user's request |
 | Docker-only run | `docker compose up --wait` runs MongoDB, the API serving the compiled UI, and a front proxy, with no host Node; a loopback preview, not a deployment | User request (v1.3); Architecture A12 keeps the loopback, proxy-trust, and replica-set contracts unchanged |
 | Delivery topology | Same-origin browser UI and `/api`; one API process; MongoDB | Keeps cookie and origin behavior explicit |
 | Submission | Public GitHub code repository and recruiter handoff | Required final outcome; outside the current M1 scope |
@@ -65,7 +66,7 @@ Detailed values and behavior are defined in Architecture and Experience.
 - README and AI.md describe the actual implementation and its limitations; selected CI checks pass for the submitted revision.
 - The public repository is verified and its link has actually been handed to the recruiter when submission is performed. “Ready to submit” and “submitted” are distinct states.
 
-M1 establishes the executable foundation, M2 the authentication API, M3 the browser journey, and M4 the accessibility, production-configuration, and security reviews plus the CI workflow, verified with direct API/Mongo tests, Chromium, and local workflow replays. M5 followed the README from a clean clone, fixed what that walkthrough and an independent review found, and reconciled every requirement with its evidence. M6 made the repository public, verified it from a logged-out view, and confirmed the published revision's passing CI run; M7 added a Docker-only run (`docker compose up --wait`, verified from a clean clone without Node and in CI) and a shorter README; the recruiter handoff waits for the user's instruction. Production certification and submission are not claimed. See Verification for the exact completed and Pending checks.
+M1 establishes the executable foundation, M2 the authentication API, M3 the browser journey, and M4 the accessibility, production-configuration, and security reviews plus the CI workflow, verified with direct API/Mongo tests, Chromium, and local workflow replays. M5 followed the README from a clean clone, fixed what that walkthrough and an independent review found, and reconciled every requirement with its evidence. M6 made the repository public, verified it from a logged-out view, and confirmed the published revision's passing CI run; M7 added a Docker-only run (`docker compose up --wait`, verified from a clean clone without Node and in CI) and a shorter README; the recruiter handoff waits for the user's instruction. Baseline v1.4 plans M8, which restructures the API to Engineering E02 without changing behavior, and M9, which measures the backend before optimizing it. Production certification and submission are not claimed. See Verification for the exact completed and Pending checks.
 
 ## Planning exit review
 

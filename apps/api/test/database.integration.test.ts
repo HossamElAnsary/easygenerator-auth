@@ -8,9 +8,9 @@ import { validateRuntimeConfig } from '../src/config/runtime-config.js';
 import {
   DATABASE_CLIENT_OPTIONS,
   LINEARIZABLE_READ_OPTIONS,
-} from '../src/database/database-options.js';
-import { DatabaseService } from '../src/database/database.service.js';
-import { StartupIndexes } from '../src/database/startup-indexes.js';
+} from '../src/infrastructure/database/database-options.js';
+import { DatabaseService } from '../src/infrastructure/database/database.service.js';
+import { StartupIndexes } from '../src/infrastructure/database/startup-indexes.js';
 import { isolatedDatabase } from './test-database.js';
 
 describe('real replica-set foundation', () => {

@@ -17,6 +17,7 @@ Return to [PLAN.md](../../PLAN.md). This document owns implementation choices an
 | Contracts | Shared Zod schemas, inferred TypeScript request/response types, and policy constants | One validation policy used by browser and server |
 | Security libraries | Maintained Argon2 package, cookie parser, Helmet, Nest throttler | Standard implementations for hashing, cookies, headers, and throttling |
 | Verification | Vitest-compatible Nest test setup, Supertest, React Testing Library where useful, Playwright | Contract/integration checks plus a small browser suite |
+| Boundary and performance tooling (v1.4) | `dependency-cruiser` in `npm run lint` (M8); a pinned HTTP load generator for the local performance baseline (M9) | Engineering E02's module rules fail the gate when broken (T18); performance claims rest on repeatable measurements (T19). Exact versions are pinned when each milestone installs them |
 
 M1 pins compatible stable versions, the MongoDB image, and the Node/npm versions. Commit the lockfile; use `npm ci` thereafter. Do not use unpinned `latest` images or silently mix Nest package majors. The foundation gate must prove backend dependency injection, validation, shared-package imports, tests, and builds before feature work proceeds.
 
@@ -31,7 +32,7 @@ Planned layout:
 ```text
 apps/
   web/src/              # routes, auth context, forms, API client, styles
-  api/src/              # auth, users, sessions, config, common HTTP handling
+  api/src/              # composition root, config, common, infrastructure, http, modules/ (Engineering E02 from v1.4)
 packages/
   contracts/src/        # schemas, public types, validation constants
 tests/
@@ -47,7 +48,7 @@ package.json
 package-lock.json
 ```
 
-Keep controllers thin, business logic in services, and Mongo schemas near their owning module. A session guard resolves a public user for protected requests. Avoid generic repository frameworks, CQRS, event buses, or dependencies from contracts into either application. Shared contracts build before consumers; the development command must perform an initial build and watch subsequent contract changes.
+Keep controllers thin, business logic in services, and Mongo schemas near their owning module. From v1.4, Engineering E02 owns the API's module layout, repository ports, and enforced dependency rules. A session guard resolves a public user for protected requests. Avoid generic repository frameworks, CQRS, event buses, or dependencies from contracts into either application. Shared contracts build before consumers; the development command must perform an initial build and watch subsequent contract changes.
 
 ## A02 — One origin and runtime topology
 
@@ -271,7 +272,7 @@ Use a **single-node replica set in local development and CI**, so actual integra
 
 The connection adapter explicitly applies this policy and validates required topology/configuration. Keep it centralized. In server terminology the write concern is `{ w: "majority", j: true, wtimeout: 5000 }`; use the pinned driver/Mongoose API's corresponding options. Journal acknowledgment and replica acknowledgment address different durability risks. A write-concern timeout does not bound the entire request or undo a write already applied. [MongoDB write concern](https://www.mongodb.com/docs/manual/reference/write-concern/).
 
-The stronger read is limited to session authorization/revocation confirmation. Majority reads alone can return older committed state; a uniquely keyed linearizable read observes successful majority writes completed before that read starts. It costs additional latency and must fail with a safe 503 when its guarantee cannot be established. On the local single-node set, M2 observed roughly 0.1 s per authenticated `/auth/me` request, against single-digit milliseconds for the logout delete. Use the existing unique tokenHash index; do not join the session/user reads into an aggregation that loses this targeted boundary. [MongoDB linearizable reads](https://www.mongodb.com/docs/manual/reference/read-concern-linearizable/).
+The stronger read is limited to session authorization/revocation confirmation. Majority reads alone can return older committed state; a uniquely keyed linearizable read observes successful majority writes completed before that read starts. It costs additional latency and must fail with a safe 503 when its guarantee cannot be established. On the local single-node set, M2 observed roughly 0.1 s per authenticated `/auth/me` request, against single-digit milliseconds for the logout delete. M9 traced that cost to the journal: on a single-node set the read waits for the next journal commit, about 105 ms at the default `journalCommitInterval` of 100 ms and 12.5 ms at 10 ms, against 0.8 ms for a majority read of the same live session (Verification T19). A multi-node set's cost depends on replication and must be measured there. The user reviewed the measured options and kept this policy (2026-10-22); the alternatives and their trigger are in the [Evolution register](evolution.md) (EV-DATA-01). Use the existing unique tokenHash index; do not join the session/user reads into an aggregation that loses this targeted boundary. [MongoDB linearizable reads](https://www.mongodb.com/docs/manual/reference/read-concern-linearizable/).
 
 After an acknowledged deletion of an existing session, subsequent authorization checks reject it. If `deleteOne` reports zero matches, confirm absence with the same authoritative tokenHash lookup before returning logout success; do not turn an earlier uncertain write into a claimed confirmation through an unverified no-op. Never reuse a revoked token value. Checks already completed before logout can still authorize in-flight work.
 

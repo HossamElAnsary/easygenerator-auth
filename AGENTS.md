@@ -31,6 +31,7 @@ The user selected **React with TypeScript** and a **clean, minimal, professional
 | [Experience](docs/plan/experience.md) | Routes, screen states, forms, redirects, visual and accessibility behavior |
 | [Delivery](docs/plan/delivery.md) | Work order, milestone progress, planned commands, risks, change history |
 | [Verification](docs/plan/verification.md) | Acceptance checks, evidence ledger, completion gates |
+| [Evolution register](docs/plan/evolution.md) | Improvements weighed and deferred or rejected, by layer, with their scale stage and trigger |
 | [AI.md](AI.md) | Actual AI involvement, effective approaches, corrections, decisions, validation |
 
 Follow the user's current request and existing authorization to determine the phase. Planning requests produce planning artifacts. When implementation is requested, continue from the appropriate unfinished milestone and proceed through the authorized scope without requesting permission for routine steps.
@@ -44,7 +45,7 @@ The repository uses npm workspaces with one lockfile:
 | Planned location | Responsibility |
 | --- | --- |
 | `apps/web` | React/Vite UI, routing, forms, authentication state, API client, CSS Modules |
-| `apps/api` | NestJS controllers/services/guards, MongoDB through Mongoose, users and sessions |
+| `apps/api` | NestJS controllers/services/guards, MongoDB through Mongoose, users and sessions; from v1.4 a modular monolith with enforced boundaries (Engineering E02) |
 | `packages/contracts` | Shared Zod input schemas, public types, validation constants |
 | `tests/e2e` | Focused browser journeys |
 | `docker/`, `compose.yaml` | From v1.3: Dockerfiles for the MongoDB, application, and proxy images, and one Compose file that runs the whole application without host Node (Architecture A12) |
@@ -76,7 +77,7 @@ The baseline deliberately uses no JWT, refresh-token flow, or RBAC; authorizatio
 4. Record actual results in Verification and milestone progress in Delivery. A partial check stays Pending until all its criteria pass; distinguish local results from remote CI and submission.
 5. Update AI.md with actual assistance and useful corrections/decisions, plus relevant README or contract changes. Report what changed, what was verified, and any remaining issue.
 
-Record material scope, contract, architecture, or selected-extra changes in Delivery's change log before dependent implementation. Update the owning document and affected checks together; preserve stable IDs. Routine implementation decisions within the baseline need no additional approval. Do not silently rewrite acceptance criteria to fit incomplete code.
+When an improvement is challenged and deferred or rejected, add or update its Evolution register entry in the same change as its Delivery change-log row; never add an entry nobody has weighed. Record material scope, contract, architecture, or selected-extra changes in Delivery's change log before dependent implementation. Update the owning document and affected checks together; preserve stable IDs. Routine implementation decisions within the baseline need no additional approval. Do not silently rewrite acceptance criteria to fit incomplete code.
 
 Before publication or other external actions, use the user's existing authorization and complete the local preparation. Request only genuinely missing permission or destination details. Recruiter communication requires explicit instruction to send it.
 

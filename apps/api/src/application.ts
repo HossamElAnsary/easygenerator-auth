@@ -9,13 +9,14 @@ import express from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module.js';
 import type { RuntimeConfig } from './config/runtime-config.js';
-import { AppLogger } from './core/app-logger.js';
-import { DatabaseService } from './database/database.service.js';
 import { isApiPath } from './http/api-paths.js';
+import { JSON_BODY_LIMIT } from './http/limits.js';
 import { mutationControls } from './http/mutation-controls.js';
 import { requestContext } from './http/request-context.js';
 import { securityHeaderOptions } from './http/security-headers.js';
 import { createValidationPipe } from './http/validation.js';
+import { DatabaseService } from './infrastructure/database/database.service.js';
+import { AppLogger } from './infrastructure/logging/app-logger.js';
 
 export const WEB_DIRECTORY = fileURLToPath(
   new URL('../../web/dist/', import.meta.url),
@@ -82,7 +83,9 @@ function configureHttp(
   app.use(requestContext(app.get(AppLogger)));
   app.use(helmet(securityHeaderOptions(config)));
   app.use('/api', mutationControls(config.appOrigin));
-  app.use(express.json({ limit: '16kb', strict: true, inflate: false }));
+  app.use(
+    express.json({ limit: JSON_BODY_LIMIT, strict: true, inflate: false }),
+  );
   app.use(cookieParser());
   if (config.serveWeb) app.use(serveWebApplication(webDirectory));
 }

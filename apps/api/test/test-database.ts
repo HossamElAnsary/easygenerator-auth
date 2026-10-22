@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import mongoose from 'mongoose';
-import { DATABASE_CLIENT_OPTIONS } from '../src/database/database-options.js';
+import { DATABASE_CLIENT_OPTIONS } from '../src/infrastructure/database/database-options.js';
 
 export function isolatedDatabase() {
   const uri = process.env.MONGODB_TEST_URI;
