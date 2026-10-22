@@ -46,6 +46,7 @@ apps/api/src/
     users/           # index.ts, UsersRepository port + MongoDB adapter, schema
     sessions/        # index.ts, SessionsService, SessionsRepository port + MongoDB adapter, schema, token functions
     health/          # index.ts, module, controller, service
+    api-docs/        # index.ts, module, controller, Swagger UI page (v1.6; registered outside production only)
 ```
 
 These rules apply to `apps/api/src`. `dependency-cruiser`, run by `npm run lint`, enforces them, so CI and `npm run check` fail on a violation (T18). Tests under `apps/api/test` may import internals. From v1.5 the same configuration also checks `apps/web/src`: E05's two layer rules, and the cycle, unresolved-import, and test-import rules (T20).

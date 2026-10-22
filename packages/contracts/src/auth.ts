@@ -38,7 +38,14 @@ const emailSchema = z
     error: `Email must be at most ${EMAIL_MAX_LENGTH} characters.`,
     abort: true,
   })
-  .regex(z.regexes.email, { error: 'Enter a valid email address.' });
+  .regex(z.regexes.email, { error: 'Enter a valid email address.' })
+  // Documentation only (B05): refinements are invisible to JSON Schema export.
+  .meta({
+    format: 'email',
+    maxLength: EMAIL_MAX_LENGTH,
+    description:
+      'Trimmed and lowercased before validation; dots and `+` tags are kept.',
+  });
 
 const nameSchema = z
   .string(typeError('Enter your name.', 'Enter a valid name.'))
@@ -50,6 +57,12 @@ const nameSchema = z
   })
   .refine((value) => codePoints(value) <= NAME_MAX_LENGTH, {
     error: `Name must be at most ${NAME_MAX_LENGTH} characters.`,
+  })
+  .meta({
+    minLength: NAME_MIN_LENGTH,
+    maxLength: NAME_MAX_LENGTH,
+    description:
+      'Trimmed before validation. Lengths count Unicode code points.',
   });
 
 /** Passwords are never trimmed, normalized, or truncated. */
@@ -76,10 +89,21 @@ const newPasswordSchema = passwordBase('Enter a password.')
   })
   .refine((value) => PUNCTUATION_OR_SYMBOL.test(value), {
     error: 'Password must include a special character.',
+  })
+  .meta({
+    minLength: PASSWORD_MIN_LENGTH,
+    maxLength: PASSWORD_MAX_LENGTH,
+    description:
+      'At least one letter, one decimal digit, and one punctuation or symbol character; whitespace is allowed but is not a special character. Never trimmed or normalized. Lengths count Unicode code points.',
   });
 
 // Signin checks only presence and bounds; composition rules are signup policy.
-const currentPasswordSchema = passwordBase('Enter your password.');
+const currentPasswordSchema = passwordBase('Enter your password.').meta({
+  minLength: 1,
+  maxLength: PASSWORD_MAX_LENGTH,
+  description:
+    'Any nonempty value. Composition rules apply only at signup, so a password that fails them gets the generic credential error.',
+});
 
 export const signupRequestSchema = z.strictObject({
   name: nameSchema,

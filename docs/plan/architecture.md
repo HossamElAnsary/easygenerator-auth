@@ -17,6 +17,7 @@ Return to [PLAN.md](../../PLAN.md). This document owns implementation choices an
 | Contracts | Shared Zod schemas, inferred TypeScript request/response types, and policy constants | One validation policy used by browser and server |
 | Security libraries | Maintained Argon2 package, cookie parser, Helmet, Nest throttler | Standard implementations for hashing, cookies, headers, and throttling |
 | Verification | Vitest-compatible Nest test setup, Supertest, React Testing Library where useful, Playwright | Contract/integration checks plus a small browser suite |
+| API documentation (v1.6) | OpenAPI 3.1 generated in `packages/contracts` with Zod's `z.toJSONSchema`; Swagger UI from `swagger-ui-dist` 5.33.1, served from local files | One rule set: the document comes from the schemas that validate requests, so it cannot describe different rules (B05, T21). `swagger-ui-dist` depends on `@scarf/scarf`, whose install-analytics script is denied in `allowScripts` |
 | Boundary and performance tooling (v1.4) | `dependency-cruiser` in `npm run lint` (M8; from v1.5 also over the web app's layers, M10); a pinned HTTP load generator for the local performance baseline (M9) | Engineering E02's module rules fail the gate when broken (T18); performance claims rest on repeatable measurements (T19). Exact versions are pinned when each milestone installs them |
 
 M1 pins compatible stable versions, the MongoDB image, and the Node/npm versions. Commit the lockfile; use `npm ci` thereafter. Do not use unpinned `latest` images or silently mix Nest package majors. From 2026-10-22 Dependabot (`.github/dependabot.yml`) proposes monthly, grouped updates for the CI actions and the three base images, each as a pull request that CI checks: new action releases; patch releases for `mongo` (staying on 7.0) and nginx (staying on 1.30); and, for `node`, only a fresh digest for the same tag, because `.nvmrc`, `.node-version`, and `engines` pin one Node release together. npm packages are updated by hand, because `allowScripts` names the exact versions of the native packages. The foundation gate must prove backend dependency injection, validation, shared-package imports, tests, and builds before feature work proceeds.
@@ -102,6 +103,8 @@ All paths are prefixed with `/api`. All auth responses, including failures, send
 | `GET /auth/me` | Session cookie | `200 { user }` | `401 UNAUTHENTICATED` |
 | `POST /auth/logout` | `{}` and optional session cookie | `204`; no body; deletes presented session and expires cookie | `503 SERVICE_UNAVAILABLE` if required session deletion fails |
 | `GET /health` | None | `200 { status: "ok" }` when API/database ready | `503 { status: "unavailable" }`; no infrastructure details |
+| `GET /openapi.json` (v1.6) | None | `200` with the OpenAPI 3.1 document | Outside production only; in production the API 404 |
+| `GET /docs` and its assets (v1.6) | None | `200` Swagger UI page, its start-up script, stylesheet, bundle, and icon | Outside production only; in production the API 404 |
 
 `user` is `{ id: string, email: string, name: string }`. The health route is a selected operational helper, not the protected endpoint. `/auth/me` is the protected endpoint required by R07.
 
@@ -221,6 +224,7 @@ Authentication answers who the caller is; authorization answers whether that cal
 | `GET /api/auth/me` | Require valid session; return only that session owner's public user |
 | `POST /api/auth/logout` | Public with optional presented session; preserve CSRF controls and idempotence; revoke only the presented token |
 | `GET /api/health` | Public; safe readiness response |
+| `GET /api/openapi.json`, `GET /api/docs` and its fixed assets (v1.6) | Public, read-only, and registered only outside production. They describe the API and contain no user data; throttling, logging, and security headers still apply. Swagger UI's requests are ordinary same-origin API calls, so every request control applies to them unchanged |
 | Any new matched API handler | Authentication required by default; define its business access policy before implementing it |
 | Unknown `/api/*` resource | API 404; never SPA HTML |
 | SPA HTML/static assets | Public; no private user data embedded; browser verifies session before protected UI |

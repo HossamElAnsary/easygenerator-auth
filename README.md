@@ -32,6 +32,7 @@ This is a local preview over plain HTTP, not a production deployment. See [Produ
 - Opaque 24-hour sessions in an HttpOnly cookie; MongoDB stores only a hash of each token. No JWT.
 - Cross-site request protection, security headers, per-route rate limits, consistent error responses, and request logs without personal data.
 - Schema, API integration, and real-browser tests, plus GitHub Actions CI.
+- OpenAPI 3.1 documentation generated from the shared schemas, with Swagger UI at `/api/docs` for trying the API.
 
 ## Develop with Node
 
@@ -99,18 +100,18 @@ All routes are under `/api`. Every POST needs `Origin` equal to `APP_ORIGIN`, `X
 | `POST /api/auth/logout` | `{}`                              | `204`, and the cookie expires           |
 | `GET /api/health`       | none                              | `200 { "status": "ok" }`                |
 
-[docs/api.md](docs/api.md) has the full contract (validation rules, cookies, error codes, rate limits) and a curl example.
+**API documentation:** with the app running, open **http://localhost:8080/api/docs** (Swagger UI). It has every route, schema, error code, cookie and origin rule, and rate limit, and "Try it out" calls the running API. The same OpenAPI 3.1 document is committed as [docs/openapi.json](docs/openapi.json) and served at `/api/openapi.json`. Both are off in production. Command-line and Postman use are in [docs/development.md](docs/development.md#calling-the-api).
 
 ## Project structure
 
 ```text
 apps/web             React UI (Vite, React Router, React Hook Form, TanStack Query)
-apps/api             NestJS API: modules/ (auth, users, sessions, health), http/, infrastructure/, config/
+apps/api             NestJS API: modules/ (auth, users, sessions, health, api-docs), http/, infrastructure/, config/
 packages/contracts   Zod schemas and types shared by the UI and the API
 tests/e2e            Playwright browser journeys
 docker/              Dockerfiles for the mongodb, app, and proxy images
 compose.yaml         The Docker stack; `docker compose up -d mongodb` starts only the database
-docs/                API and development guides; docs/plan holds the specification
+docs/                The OpenAPI document and the development guide; docs/plan holds the specification
 ```
 
 ## Design notes

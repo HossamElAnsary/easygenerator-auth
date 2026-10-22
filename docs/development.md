@@ -21,9 +21,10 @@ Setup is in the [README](../README.md). This guide covers the details behind it.
 | `npm run check`                | The complete local gate: lint, typecheck, tests, builds, and browser tests |
 | `npm run check:foundation`     | The same without browsers                                                  |
 | `npm run bench`                | Build, then run the local load baseline (see Performance baseline)         |
+| `npm run docs:openapi`         | Build, then regenerate `docs/openapi.json` (see Calling the API)           |
 | `docker compose up --wait`     | The whole application in containers at `http://localhost:8080` (see below) |
 
-Exact package versions are pinned in the manifests and the single `package-lock.json`. npm 12 runs install scripts only for the versions allowed under `allowScripts` in `package.json` (Argon2 and SWC).
+Exact package versions are pinned in the manifests and the single `package-lock.json`. npm 12 runs install scripts only for the versions allowed under `allowScripts` in `package.json` (Argon2 and SWC). `@scarf/scarf`, which `swagger-ui-dist` depends on, is listed as denied, so its install-analytics script never runs.
 
 ## Tests
 
@@ -82,6 +83,25 @@ The database is local, unauthenticated, and published on loopback port 27018 (no
 Startup validates the configuration and the web assets, connects to a writable replica-set primary, then creates and verifies the unique `users.email`, unique `sessions.tokenHash`, and TTL `sessions.expiresAt` indexes before listening. Existing indexes are never dropped; a conflicting definition stops startup. Reads use the primary with majority read concern. Writes need majority and journal acknowledgment within 5 seconds. Server selection and reads have 5-second budgets, and sockets time out after 10 seconds. Session checks use a linearizable read, which costs about 0.1 s per authenticated request on the local set. Argon2id uses 19 MiB, 2 iterations, and parallelism 1, about 13 ms per hash on an Apple M4 Pro.
 
 The API logs one JSON line per API request: request ID, method, route template, status, duration, and error code. It never logs bodies, email addresses, passwords, cookies, tokens, or connection strings. Startup failures print one generic line by design.
+
+## Calling the API
+
+The API contract is the OpenAPI 3.1 document: Swagger UI at `/api/docs` and the JSON at `/api/openapi.json`, both outside production only, plus the committed copy in `docs/openapi.json`. It is built in `packages/contracts/src/openapi.ts` from the same Zod schemas that validate requests, and the API passes in its real rate limits, session lifetime, and body limit. After changing a schema, a route, or one of those values, run `npm run docs:openapi`. A test fails while the committed file is stale, and another fails when a route the app serves is missing from the document.
+
+Swagger UI's "Try it out" works because the page has the API's origin. Desktop tools such as Postman or Insomnia can import `/api/openapi.json`, but every POST must also set `Origin` to the app's address (for example `http://localhost:8080`), or the API answers `403 REQUEST_FORBIDDEN`. Browser-hosted tools on another origin cannot call the API: the Origin check rejects their POSTs, and CORS is disabled.
+
+From the command line, this runs in bash or zsh against the Docker stack, with dummy credentials. For `npm run dev`, set `ORIGIN=http://localhost:5173` instead. Signup prints the new user, signin and `me` print the same user, logout prints `204`, and the last request prints a `401` error because the session was revoked. A repeated run gets `409 EMAIL_IN_USE` from signup and then continues.
+
+```sh
+ORIGIN=http://localhost:8080
+JAR=$(mktemp)
+JSON=(-H "Origin: $ORIGIN" -H 'X-CSRF-Protection: 1' -H 'Content-Type: application/json')
+curl -s -w '\n' "${JSON[@]}" -d '{"name":"Ada Lovelace","email":"ada@example.com","password":"Analytical-1"}' "$ORIGIN/api/auth/signup"
+curl -s -w '\n' -c "$JAR" "${JSON[@]}" -d '{"email":"ada@example.com","password":"Analytical-1"}' "$ORIGIN/api/auth/signin"
+curl -s -w '\n' -b "$JAR" "$ORIGIN/api/auth/me"
+curl -s -b "$JAR" -c "$JAR" -o /dev/null -w '%{http_code}\n' "${JSON[@]}" -d '{}' "$ORIGIN/api/auth/logout"
+curl -s -w '\n' -b "$JAR" "$ORIGIN/api/auth/me"
+```
 
 ## Production
 
