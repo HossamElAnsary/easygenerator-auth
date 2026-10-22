@@ -84,6 +84,14 @@ export default {
       to: { path: '(^|/)node_modules/argon2/' },
     },
     {
+      name: 'production-imports-test',
+      severity: 'error',
+      comment:
+        'Engineering E06: unit tests sit beside their sources, and production code never imports one.',
+      from: { path: SRC, pathNot: '\\.test\\.ts$' },
+      to: { path: '\\.test\\.ts$' },
+    },
+    {
       name: 'no-circular',
       severity: 'error',
       comment: 'E02 rule 5: no import cycles.',

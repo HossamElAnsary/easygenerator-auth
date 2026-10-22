@@ -1,16 +1,13 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { DependencyUnavailableError } from '../src/common/errors.js';
-import { Clock } from '../src/infrastructure/clock/clock.js';
+import { DependencyUnavailableError } from '../../common/errors.js';
+import { Clock } from '../../infrastructure/clock/clock.js';
 import {
   type NewSession,
   SessionsRepository,
   type StoredSession,
-} from '../src/modules/sessions/sessions.repository.js';
-import {
-  SESSION_LIFETIME_MS,
-  SessionsService,
-} from '../src/modules/sessions/sessions.service.js';
+} from './sessions.repository.js';
+import { SESSION_LIFETIME_MS, SessionsService } from './sessions.service.js';
 
 const NOW = new Date('2026-10-21T12:00:00.000Z');
 const USER_ID = '6716a1f0c2b1d3e4f5a6b7c8';

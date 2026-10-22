@@ -27,7 +27,8 @@
     "start:prod": "NODE_ENV=production SERVE_WEB=true node --env-file-if-exists=.env apps/api/dist/main.js",
     "check:foundation": "npm run lint && npm run typecheck && npm test && npm run build",
     "test:e2e": "npm run build && PLAYWRIGHT_BROWSERS_PATH=$PWD/.cache/ms-playwright node --env-file-if-exists=.env node_modules/@playwright/test/cli.js test",
-    "check": "npm run lint && npm run typecheck && npm test && npm run test:e2e"
+    "check": "npm run lint && npm run typecheck && npm test && npm run test:e2e",
+    "bench": "npm run build && node --env-file-if-exists=.env scripts/bench.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

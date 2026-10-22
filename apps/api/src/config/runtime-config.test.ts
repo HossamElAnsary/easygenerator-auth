@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateRuntimeConfig } from '../src/config/runtime-config.js';
+import { validateRuntimeConfig } from './runtime-config.js';
 
 const valid = {
   NODE_ENV: 'development',
