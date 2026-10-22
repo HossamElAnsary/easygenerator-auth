@@ -18,7 +18,7 @@
     "dev": "npm run build -w @easy-generator/contracts && npm run build -w @easy-generator/api && concurrently --kill-others --names contracts,api,web 'npm run dev -w @easy-generator/contracts' 'npm run dev -w @easy-generator/api' 'npm run dev -w @easy-generator/web'",
     "typecheck": "npm run build -w @easy-generator/contracts && npm run typecheck --workspaces && tsc -p tests/e2e/tsconfig.json",
     "lint": "eslint . && npm run lint:boundaries && npm run format:check",
-    "lint:boundaries": "depcruise apps/api/src --config .dependency-cruiser.mjs",
+    "lint:boundaries": "depcruise apps/api/src apps/web/src --config .dependency-cruiser.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "npm run build -w @easy-generator/contracts && npm run test --workspaces",
