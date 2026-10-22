@@ -26,12 +26,39 @@ Statuses: **Planned**, **In progress**, **Verified**, **Blocked**. Blocked entri
 | M5 — Submission ready | M4 | Fresh-checkout README walkthrough, accurate AI record, evidence review, and publication-ready tracked files | Verified locally: T01–T12, T14, T16 pass; every requirement except R09 and B03 has passing evidence. Private CI run #6 exposed MongoDB 8.0's refusal of the runners' new kernel, fixed by moving to 7.0.45; later runs pass. T13's submitted-revision run and T15 are M6 |
 | M6 — Submission | M5; authorized submission action and destination details | Public GitHub revision verified and recruiter link handoff actually performed | In progress: publication done. The repository is public and verified logged out, and T13 passed for `6b68db7` (run #10) and `f7776e8` (run #11). M7 is verified, so the recruiter handoff (T15) now waits only for the user's instruction and the recipient |
 | M7 — Docker-only run and README | M6 publication; baseline v1.3 | B07: Dockerfiles for the MongoDB, application, and proxy images and one Compose file that runs the whole application without host Node (A12). R08/B05: a short README in newcomer order, with the API contract in `docs/api.md` and development details in `docs/development.md`. Exit: T17 passes; T13, T14, and T16 pass again on M7's head; T01–T12 still pass | Verified: T17 passes; T13 (run #13, both jobs), T14, and T16 pass on `f74212e`; T01–T12 still pass |
-| M8 — Backend module boundaries | M7; baseline v1.4 | B08: restructure `apps/api` to Engineering E02 (module layout, `index.ts` public surfaces, repository ports with MongoDB adapters, one `DatabaseModule` for the connection, startup checks, and readiness, errors and budgets with one owner each) and enforce the dependency rules with `dependency-cruiser` in `npm run lint`. No route, response, cookie, schema, rate-limit, or database-policy change. Exit: T18 passes; T01–T17 still pass | Verified on the branch: T18 and `npm run check` pass, CI run #15 passed both jobs on `8d4872e`, and T14 and T17 passed again from a clean clone at `664da83`. Merging waits for the pull request's CI and the user |
-| M9 — Backend performance | M8 | B09: a repeatable local load command and baseline, then only the optimizations it justifies (first candidates: bounded password-hashing admission and the thread-pool size; the linearizable session read is measured and its options put to the user). Exit: T19 passes; T01–T18 still pass | Verified on the branch: T19 passes and `npm run check` passes. No code optimization adopted; the user kept linearizable session reads (EV-DATA-01) |
+| M8 — Backend module boundaries | M7; baseline v1.4 | B08: restructure `apps/api` to Engineering E02 (module layout, `index.ts` public surfaces, repository ports with MongoDB adapters, one `DatabaseModule` for the connection, startup checks, and readiness, errors and budgets with one owner each) and enforce the dependency rules with `dependency-cruiser` in `npm run lint`. No route, response, cookie, schema, rate-limit, or database-policy change. Exit: T18 passes; T01–T17 still pass | Verified on the branch: T18 and `npm run check` pass, CI run #15 passed both jobs on `8d4872e`, and T14 and T17 passed again from a clean clone at `664da83`. Merged to `main` as `2ebef0e` (runs #17 and #18 passed) |
+| M9 — Backend performance | M8 | B09: a repeatable local load command and baseline, then only the optimizations it justifies (first candidates: bounded password-hashing admission and the thread-pool size; the linearizable session read is measured and its options put to the user). Exit: T19 passes; T01–T18 still pass | Verified: T19 passes and `npm run check` passes. No code optimization adopted; the user kept linearizable session reads (EV-DATA-01). Merged to `main` as `2ebef0e` |
 
 The dependency path is M1 → M2 → M3 integration → M4 → M5 → M6 publication → M7 → M6 handoff. Baseline v1.4 adds M8 → M9 on the branch `refactor/m8-backend-structure`; the handoff does not wait for them (see the M8 decisions). After M1, the UI shell and backend work can run in parallel against the frozen contracts; shared-contract edits must be coordinated. Do not parallelize competing edits to the same contract or use a UI mock as proof that the backend works.
 
-## Current handoff — 2026-10-22 (M9 verified on the branch)
+## Current handoff — 2026-10-22 (M8 and M9 merged, ready for handoff)
+
+- **Completed:** M0–M5, M6's publication, M7, M8, and M9. The user merged pull request #1 into `main` as `2ebef0e`; pull-request run #17 passed both jobs on the merged head `75119ee` (check job 2 min 5 s, Docker-only job 51 s); the user merged pull request #1 as merge commit `2ebef0e`, whose tree equals `75119ee`, and push run #18 on `main` passed both jobs (check job 1 min 50 s, Docker-only job 54 s). T01–T14 and T16–T19 pass.
+- **Unfinished:** T15, the recruiter link handoff. The state is **ready for handoff**, not **submitted**. The M7 message is superseded by the one below, which names the head of `main` after this record commit.
+- **Decisions to retain:** everything in the earlier handoffs, plus the M8 and M9 results and the Evolution register's working rule.
+- **Blockers:** the handoff needs the user's explicit instruction and the recipient. The merged branch `refactor/m8-backend-structure` can be deleted when the user wants.
+- **Next concrete task:** when instructed, send the message below to the named recipient, then record the date, channel, and recipient role in T15 and set the state to **submitted**.
+
+**Final recruiter message** (prepared; **not sent**; `<SHA>` is the head of `main` after this record commit, given in the handoff message):
+
+> Subject: Full Stack Test Task submission
+>
+> Hi [recruiter name],
+>
+> Here is my submission for the Full Stack Test Task: https://github.com/HossamElAnsary/easygenerator-auth
+>
+> The submitted revision is commit `<SHA>` on `main`, and its GitHub Actions run passes.
+>
+> It implements signup (email, name, and password, validated on both the frontend and the backend), signin, and an authenticated page that shows "Welcome to the application.", using React with TypeScript, NestJS, and MongoDB. `GET /api/auth/me` is the protected endpoint; sessions are opaque, stored server-side, and carried in an HttpOnly cookie. Logout, API integration and real-browser tests, GitHub Actions CI, safe request logs, and Markdown API documentation are included.
+>
+> With Docker installed, `docker compose up --wait` runs the whole application at http://localhost:8080, with no Node setup needed. The README also covers local development with the pinned Node and npm versions, and AI.md records where AI assisted, which approaches worked, and where its output was corrected.
+>
+> Thank you for your time. I am happy to walk through any part of it.
+>
+> Best regards,
+> Hossam
+
+## Previous handoff — 2026-10-22 (M9 verified on the branch)
 
 - **Completed:** M9 on `refactor/m8-backend-structure`, pushed at the user's request; CI run #16 (dispatched on the branch) passed both jobs on `08666d5`: `npm run bench` and its recorded baseline (T19), the unit tests beside their sources, per-deployment thread-pool guidance, and the measured session-read options. `main` is unchanged at `f36ab64` and stays **ready for handoff**.
 - **Unfinished:** the pull request's CI on the merged head, then the user's decision to merge; T15 on `main`.
@@ -583,5 +610,6 @@ Planning estimate revised with the explicit database setup: M1 45–75 minutes; 
 | 2026-10-22 | Close M9 on the branch | T19 passes; `npm run check` passes. Nothing pushed; the session read decision is the user's | Verified on the branch |
 | 2026-10-22 | Keep linearizable session reads (option 1 of EV-DATA-01); push the branch and dispatch CI on M9 | The user chose option 1 after the measured options and asked to push so CI runs. A10 unchanged; the register entry becomes Deferred with its trigger. T13 | Run #16 passed both jobs on `08666d5` |
 | 2026-10-22 | Run the merge-readiness checks and open a pull request to `main` | The user asked for the three remaining steps: T14 and T17 from a clean clone (both passed again at `664da83`), then a pull request so CI runs on the merged head. No code or contract change; CLAUDE.md gains a note on the Compose namespace pitfall the walkthrough hit. Merging is not authorized yet | Pull request open; its CI run is reported in the handoff message |
+| 2026-10-22 | Merge M8 and M9 into `main` | The user merged pull request #1 (`2ebef0e`); pull-request run #17 passed both jobs on the merged head `75119ee` (check job 2 min 5 s, Docker-only job 51 s); the user merged pull request #1 as merge commit `2ebef0e`, whose tree equals `75119ee`, and push run #18 on `main` passed both jobs (check job 1 min 50 s, Docker-only job 54 s). The recruiter message is re-prepared with the head after this record commit; nothing was sent. T13, T15 | Merged; ready for handoff |
 
 Future entries should include the decision changed, rationale, affected requirement/check IDs, and validation impact. Do not overwrite history to conceal a scope reduction.
