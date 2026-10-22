@@ -91,25 +91,25 @@ export default {
       name: 'web-ui-imports-transport-or-auth',
       severity: 'error',
       comment:
-        'E05: ui/ is presentational and imports neither the API client nor the auth screens.',
+        'E05: ui/ is presentational and reaches neither the API client nor the auth screens, directly or through another module.',
       from: { path: `${WEB}ui/` },
-      to: { path: `${WEB}(api|auth)/` },
+      to: { path: `${WEB}(api|auth)/`, reachable: true },
     },
     {
       name: 'web-transport-imports-ui-or-auth',
       severity: 'error',
       comment:
-        'E05: api/ is transport and imports neither the auth screens nor ui/.',
+        'E05: api/ is transport and reaches neither the auth screens nor ui/, directly or through another module.',
       from: { path: `${WEB}api/` },
-      to: { path: `${WEB}(auth|ui)/` },
+      to: { path: `${WEB}(auth|ui)/`, reachable: true },
     },
     {
       name: 'production-imports-test',
       severity: 'error',
       comment:
-        'Engineering E06: unit tests sit beside their sources, and production code never imports one.',
-      from: { path: EITHER, pathNot: '\\.test\\.tsx?$' },
-      to: { path: '\\.test\\.tsx?$' },
+        'Engineering E06: unit tests sit beside their sources, and production code never imports one or the web test setup.',
+      from: { path: EITHER, pathNot: ['\\.test\\.tsx?$', `${WEB}test/`] },
+      to: { path: ['\\.test\\.tsx?$', `${WEB}test/`] },
     },
     {
       name: 'no-circular',
