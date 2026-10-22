@@ -1,0 +1,51 @@
+# Monthly version updates for the pinned CI actions and base images
+# (Architecture A01). Each pull request runs the CI workflow. npm stays manual:
+# `allowScripts` in package.json names exact versions of the native packages.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directories:
+      - /docker/app
+      - /docker/mongodb
+      - /docker/proxy
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      base-images:
+        patterns: ['*']
+    ignore:
+      # .nvmrc, .node-version, and package.json's engines pin the same Node
+      # release, so only the digest of the current tag is refreshed.
+      - dependency-name: node
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      # Patch releases only: MongoDB stays on 7.0 (Architecture A08,
+      # Evolution EV-DATA-04) and nginx on its 1.30 stable branch.
+      - dependency-name: mongo
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      - dependency-name: nginxinc/nginx-unprivileged
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor

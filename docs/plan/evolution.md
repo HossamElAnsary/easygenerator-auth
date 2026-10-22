@@ -49,6 +49,7 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 | [EV-OPS-01](#ev-ops-01--a-hosted-https-deployment) | A hosted HTTPS deployment | Deferred | S2 | L |
 | [EV-OPS-02](#ev-ops-02--metrics-tracing-and-log-shipping) | Metrics, tracing, and log shipping | Deferred | S2 | M |
 | [EV-OPS-03](#ev-ops-03--separate-liveness-and-readiness-checks) | Separate liveness and readiness checks | Deferred | S2 | S |
+| [EV-OPS-04](#ev-ops-04--container-runtime-hardening) | Container runtime hardening | Deferred | S2 | S |
 | [EV-WEB-01](#ev-web-01--locales-and-right-to-left-layouts) | Locales and right-to-left layouts | Deferred | S4 | M |
 | [EV-WEB-02](#ev-web-02--cross-tab-sign-out) | Cross-tab sign-out | Deferred | S4 | S |
 | [EV-WEB-03](#ev-web-03--a-component-library) | A component library | Deferred | S4 | M |
@@ -61,6 +62,8 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 | [EV-WEB-10](#ev-web-10--a-generic-context-interface-and-compound-form-components) | A generic context interface and compound form components | Deferred | S4 | S |
 | [EV-WEB-11](#ev-web-11--an-accessibility-lint-plugin) | An accessibility lint plugin | Deferred | S4 | S |
 | [EV-DEL-01](#ev-del-01--continuous-deployment-published-images-and-releases) | Continuous deployment, published images, and releases | Deferred | S2 | M |
+| [EV-DEL-02](#ev-del-02--source-revision-labels-on-images) | Source revision labels on images | Deferred | S2 | S |
+| [EV-DEL-03](#ev-del-03--an-image-vulnerability-scan-in-ci) | An image vulnerability scan in CI | Deferred | S2 | S |
 
 ## Testing and code organization
 
@@ -276,6 +279,14 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 - **Trigger:** a platform that restarts containers on failed health checks.
 - **Source:** the v1.4 backend review.
 
+### EV-OPS-04 — Container runtime hardening
+
+- **Status:** Deferred. **Stage:** S2. **Cost:** S.
+- **Today:** the `app` image runs as the non-root `node` user without npm, the proxy is unprivileged nginx on port 8080, and every port is bound to `127.0.0.1`; the stack holds no secret (Architecture A12).
+- **Improvement:** `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true]`, and a read-only root filesystem (with a `tmpfs` for nginx's temporary files) for `app` and `proxy`. `mongodb` needs its capabilities, because the image's entrypoint switches to the `mongodb` user.
+- **Trigger:** a hosted deployment (EV-OPS-01), whose platform sets these runtime controls; the loopback preview's Compose file does not carry over to it.
+- **Source:** the 2026-10-22 infrastructure review.
+
 ## Web UI
 
 ### EV-WEB-01 — Locales and right-to-left layouts
@@ -373,7 +384,23 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 ### EV-DEL-01 — Continuous deployment, published images, and releases
 
 - **Status:** Deferred. **Stage:** S2. **Cost:** M.
-- **Today:** CI checks every push to `main` and every pull request; nothing is deployed or published.
+- **Today:** CI checks every push to `main`, every pull request, and `main` weekly; nothing is deployed or published.
 - **Improvement:** images published to a registry under a controlled namespace, tagged releases, and deployment from CI.
 - **Trigger:** a hosted environment (EV-OPS-01).
 - **Source:** Requirements' out-of-scope list.
+
+### EV-DEL-02 — Source revision labels on images
+
+- **Status:** Deferred. **Stage:** S2. **Cost:** S.
+- **Today:** the locally built images carry only Compose's labels, so which commit a running container came from is known only from its build time.
+- **Improvement:** an `org.opencontainers.image.revision` label (and `source`) set at build time, and the deployed digest recorded with each release.
+- **Trigger:** published images (EV-DEL-01), where provenance links a release to its source.
+- **Source:** the 2026-10-22 infrastructure review.
+
+### EV-DEL-03 — An image vulnerability scan in CI
+
+- **Status:** Deferred. **Stage:** S2. **Cost:** S.
+- **Today:** base images are pinned by digest and refreshed through Dependabot's monthly pull requests; `npm audit` reports no vulnerability; no image scanner runs.
+- **Improvement:** a pinned scanner over the built images in CI, failing on fixable critical findings, with an exceptions file.
+- **Trigger:** published images or real user data. Until then a gate would fail runs on advisories unrelated to the change under test.
+- **Source:** the 2026-10-22 infrastructure review.
