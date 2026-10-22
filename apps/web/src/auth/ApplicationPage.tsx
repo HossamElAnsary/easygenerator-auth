@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { useAuth } from './AuthProvider';
 import { SessionNotice } from './SessionNotice';
-import { Alert, Heading, errorMessage, useRequestError } from '../ui/patterns';
+import { Alert, Heading } from '../ui/patterns';
+import { errorMessage, useRequestError } from './request-error';
 import styles from '../App.module.css';
 
 export function ApplicationPage() {

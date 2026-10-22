@@ -1,6 +1,7 @@
 import { useAuth } from './AuthProvider';
 import { ApiError } from '../api/client';
-import { errorMessage, Notice, useWaitUntil } from '../ui/patterns';
+import { Notice } from '../ui/patterns';
+import { errorMessage, useWaitUntil } from './request-error';
 
 export function SessionNotice() {
   const auth = useAuth();

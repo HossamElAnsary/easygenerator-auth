@@ -201,6 +201,22 @@ describe('browser auth state', () => {
         .every((m) => m.state.variables === undefined),
     ).toBe(true);
   });
+  it('keeps a logout failure visible through the session recheck that follows it', async () => {
+    const me = vi.spyOn(authApi, 'me').mockResolvedValue(user);
+    vi.spyOn(authApi, 'logout').mockRejectedValue(new ApiError('unavailable'));
+    renderApp('/app');
+    await screen.findByText('Welcome to the application.');
+    const check = deferred<typeof user>();
+    me.mockReturnValue(check.promise);
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    await screen.findByText('Checking your session…');
+    expect(screen.queryByText('Welcome to the application.')).toBeNull();
+    await act(async () => check.resolve(user));
+    await screen.findByText('Welcome to the application.');
+    expect(screen.getByRole('alert').textContent).toBe(
+      'The service is unavailable. Try again.',
+    );
+  });
   it('settles offline checks and submissions without queuing a POST on reconnect', async () => {
     vi.spyOn(authApi, 'me').mockImplementation(anonymous);
     const signin = vi
