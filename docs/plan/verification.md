@@ -433,6 +433,7 @@ Branch `ci/dependency-updates-and-schedule` from `35bb9b9`, on macOS arm64 with 
 | Digest-only updates for `node` | dependabot-core's Docker `update_checker.rb` and `file_parser.rb` on GitHub, read 2026-10-22 | An ignored version keeps the current tag as the latest, and that tag's digest is still compared, unless the experiment `docker_digest_only_update_suppression` is on; `FROM` lines without a tag or digest are skipped. The behavior on GitHub is confirmed only by the first monthly run after a merge |
 | Local Docker stack | `docker compose up --wait --build` with the main checkout's `compose.yaml` (`35bb9b9`) | Every service healthy, data volume kept; `app` rebuilt (it predated M10), `proxy` and `mongodb` unchanged. `/api/health` returns 200, and `/signin` loads `index-DR3gb6Le.js`, the bundle this branch's own build produces |
 | Gate | `npm run check` on the branch | Pass: no boundary violation (111 modules, 313 dependencies), Prettier clean, 73 contracts / 154 API / 48 web tests, builds, 10 Chromium cases |
+| CI on the branch (T13) | The branch pushed at the user's approval of the plan; `gh workflow run ci.yml --ref ci/dependency-updates-and-schedule` | Run #24 (`workflow_dispatch`, head `306ee8c`) passed both jobs on `ubuntu-24.04` image 20261012.334.1: check 1 min 38 s, Docker-only 52 s |
 
 The weekly schedule and Dependabot act only on the default branch, so neither has run yet.
 
