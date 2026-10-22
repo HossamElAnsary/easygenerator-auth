@@ -27,11 +27,19 @@ Statuses: **Planned**, **In progress**, **Verified**, **Blocked**. Blocked entri
 | M6 — Submission | M5; authorized submission action and destination details | Public GitHub revision verified and recruiter link handoff actually performed | In progress: publication done. The repository is public and verified logged out, and T13 passed for `6b68db7` (run #10) and `f7776e8` (run #11). M7 is verified, so the recruiter handoff (T15) now waits only for the user's instruction and the recipient |
 | M7 — Docker-only run and README | M6 publication; baseline v1.3 | B07: Dockerfiles for the MongoDB, application, and proxy images and one Compose file that runs the whole application without host Node (A12). R08/B05: a short README in newcomer order, with the API contract in `docs/api.md` and development details in `docs/development.md`. Exit: T17 passes; T13, T14, and T16 pass again on M7's head; T01–T12 still pass | Verified: T17 passes; T13 (run #13, both jobs), T14, and T16 pass on `f74212e`; T01–T12 still pass |
 | M8 — Backend module boundaries | M7; baseline v1.4 | B08: restructure `apps/api` to Engineering E02 (module layout, `index.ts` public surfaces, repository ports with MongoDB adapters, one `DatabaseModule` for the connection, startup checks, and readiness, errors and budgets with one owner each) and enforce the dependency rules with `dependency-cruiser` in `npm run lint`. No route, response, cookie, schema, rate-limit, or database-policy change. Exit: T18 passes; T01–T17 still pass | Verified on the branch: T18 and `npm run check` pass, and CI run #15 passed both jobs on `8d4872e`. Before merging: the README paths (T14) and a clean-clone Docker-only run (T17) |
-| M9 — Backend performance | M8 | B09: a repeatable local load command and baseline, then only the optimizations it justifies (first candidates: bounded password-hashing admission and the thread-pool size; the linearizable session read is measured and its options put to the user). Exit: T19 passes; T01–T18 still pass | Planned |
+| M9 — Backend performance | M8 | B09: a repeatable local load command and baseline, then only the optimizations it justifies (first candidates: bounded password-hashing admission and the thread-pool size; the linearizable session read is measured and its options put to the user). Exit: T19 passes; T01–T18 still pass | Verified on the branch: T19 passes and `npm run check` passes. No code optimization adopted; the session read policy awaits the user's decision (EV-DATA-01) |
 
 The dependency path is M1 → M2 → M3 integration → M4 → M5 → M6 publication → M7 → M6 handoff. Baseline v1.4 adds M8 → M9 on the branch `refactor/m8-backend-structure`; the handoff does not wait for them (see the M8 decisions). After M1, the UI shell and backend work can run in parallel against the frozen contracts; shared-contract edits must be coordinated. Do not parallelize competing edits to the same contract or use a UI mock as proof that the backend works.
 
-## Current handoff — 2026-10-21 (M8 verified on the branch)
+## Current handoff — 2026-10-22 (M9 verified on the branch)
+
+- **Completed:** M9 on `refactor/m8-backend-structure` (local commits; not pushed): `npm run bench` and its recorded baseline (T19), the unit tests beside their sources, per-deployment thread-pool guidance, and the measured session-read options. `main` is unchanged at `f36ab64` and stays **ready for handoff**.
+- **Unfinished:** the user's decision on the session read policy (EV-DATA-01); before the branch merges, T14 and a clean-clone T17, then CI on the merged head; T15 on `main`.
+- **Decisions to retain:** the M9 result below: no hashing admission control (EV-PERF-01, deferred), no default `UV_THREADPOOL_SIZE` (EV-PERF-02), linearizable session reads unchanged, and the benchmark's own-database guard.
+- **Blockers:** the read-policy decision, pushing, a pull request, merging, and the recruiter handoff each need the user.
+- **Next concrete task:** apply the user's read-policy decision if it changes A10; otherwise push the branch and dispatch CI when asked.
+
+## Previous handoff — 2026-10-21 (M8 verified on the branch)
 
 - **Completed:** M8 on `refactor/m8-backend-structure`, pushed to `origin` at the user's request (no pull request): the API follows Engineering E02, `npm run lint` enforces its rules, T18 passes, `npm run check` passes, and CI run #15 (dispatched on the branch) passed both jobs on `8d4872e`. `main` is unchanged at `f36ab64` and stays **ready for handoff**.
 - **Unfinished:** M9 (nothing implemented). Before M8 merges: the README walkthrough (T14) and a clean-clone Docker-only run (T17). T15 on `main`.
@@ -462,6 +470,24 @@ Requested together with M8; starts from M8's head. Baseline v1.4 adds B09; T19 o
 
 Exit evidence: T19 passes; T01–T18 still pass. Laptop numbers on a single-node replica set are relative comparisons, not capacity claims.
 
+### M9 result — 2026-10-22
+
+The user said "go-ahead with M9". The tasks ran in the documented order; exact commands and results are in Verification's M9 evidence.
+
+1. **Baseline gate and test placement.** `npm run check` passed on `3b0e0da`; the two unit tests now sit beside their sources, with the Vitest include and the `production-imports-test` rule (`7d49a90`).
+2. **Load command.** `npm run bench` (`7d49a90`, safety and accuracy fixes in `4e39cfc`).
+3. **Baseline results.** Three runs on `36cddc5`; medians in Verification.
+4. **Hypotheses.** Both confirmed: hashing queues on the 4-thread pool without slowing other requests, and the linearizable read waits for the journal commit.
+5. **Hashing admission: not implemented.** Its precondition (confirmed queueing) held, but the measurements removed its motivation: unrelated requests were not delayed, and per-IP limits bound each client. A new 503 path would change the API contract for an overload a single process does not reach at stage S1. Deferred as EV-PERF-01, with a trigger. The thread-pool size became per-deployment guidance in `docs/development.md` instead of a default (EV-PERF-02).
+6. **Session read policy: options to the user, no change.** Keep linearizable reads; tune the journal commit interval; majority reads with a failover risk; or a hybrid. Recorded in EV-DATA-01 and A10.
+7. **Gates.** An independent review (one medium safety gap, fixed), `npm run check`, and nothing pushed.
+
+Decisions made during implementation (change log below):
+
+- **A `node:http` load loop instead of a pinned load generator.** `autocannon` 8.0.0, the planned candidate, brought a moderate `uuid` advisory whose only offered fix was downgrading to autocannon 2. A closed-loop loop over keep-alive sockets measures the same thing in about 40 lines with no dependency, and `npm audit` stays at 0.
+- **The benchmark guards its database like the test harness.** It refuses a test URI it cannot rewrite to `easy_generator_bench_<random>` and drops that database by name (from the review).
+- **Rule scope widened by placement, not by edit.** Unit tests under `src/` are now inside the boundary rules; integration suites in `test/` stay outside.
+
 ## Command contract to implement
 
 These are milestone-spanning command interfaces. M1 implements install, database setup, development, lint/typecheck/tests, builds, preview, and production startup. `check` and `test:e2e` are implemented at M3; `check:foundation` runs lint/typecheck/workspace tests/build without browsers. README lists actual available commands.
@@ -550,5 +576,9 @@ Planning estimate revised with the explicit database setup: M1 45–75 minutes; 
 | 2026-10-21 | Close M8 on the branch | T18 passes; `npm run check` passes (267 workspace and 10 Chromium tests). T13, T14, and T17 run again before M8 merges. Nothing pushed | Verified on the branch; M9 next |
 | 2026-10-22 | Push `refactor/m8-backend-structure` and dispatch CI on it | The user asked to push the branch so CI runs on M8. The workflow runs on pushes to `main`, pull requests, and dispatch, so it was dispatched without opening a pull request. T13 | Run #15 passed both jobs on `8d4872e` |
 | 2026-10-22 | Add the Evolution register (`docs/plan/evolution.md`) and Engineering E06's test-placement convention; fold the move of the two API unit tests into M9 step 1 | The user proposed moving unit tests into their modules, with a `tests/` folder once a module has two, then asked for the proposal to be challenged. Two of 14 API test files are unit tests; the other 12 start the whole application or check the toolchain and belong to no module. Verdict: the convention is right (beside the source, as in the web app, so the boundary rules also keep unit tests database-free), a standalone move is not worth a verification cycle, and the count threshold is rejected (EV-TEST-02). The user then asked for a register of improvements that would matter at scale, organized by layer and grown as ideas are challenged. It has stage definitions (S1 today to S4 product growth), statuses Deferred/Adopted/Rejected, and seed entries only from decisions already recorded (Architecture A05/A07–A10, Requirements' exclusions, README and M5 limitations, the M8 template comparison, and this challenge). AGENTS.md gains the rule that each deferral updates the register in the same change. No code, contract, or check change | Documentation only |
+| 2026-10-22 | Start authorized M9 from `3b0e0da`; move the two API unit tests beside their sources; add `npm run bench` on `node:http` after removing `autocannon` 8.0.0 | The user said "go-ahead with M9". Baseline gate passed first. `autocannon` added a moderate `uuid` advisory (GHSA-w5hq-g745-h8pq) with only a breaking downgrade as fix, so it was replaced by a dependency-free closed-loop client. B09, T19; Engineering E06 | Implemented in `7d49a90` |
+| 2026-10-22 | Do not implement hashing admission control; document `UV_THREADPOOL_SIZE` as per-deployment tuning; leave the linearizable session read unchanged and put its measured options to the user | Measured (Verification M9 evidence): hashing queues on the 4-thread pool at about 235 requests/s but other requests stay at 0.3 ms; 8 threads give about 440 requests/s, 16 about 560 with slower health checks; the linearizable read costs one journal commit interval (about 105 ms; 12.5 ms at a 10 ms interval). An admission limit would add a 503 contract path for an overload one process does not reach; a fixed pool size is machine-specific. A05–A07 and A10 unchanged; Evolution EV-PERF-01 (deferred), EV-PERF-02 (adopted as guidance), EV-DATA-01 (user's decision) | Recorded with the measurements |
+| 2026-10-22 | Apply the independent M9 review: the benchmark's own-database guard, a live session for the read probe, flagged non-success rows, shutdown timing, and documentation that no longer overclaims | One medium finding (an unmatched test URI could have written to and dropped the marker test database) and four low ones. Benchmark and documentation only; T16, T19 | Fixed in `4e39cfc`; recorded baseline re-run on `36cddc5` |
+| 2026-10-22 | Close M9 on the branch | T19 passes; `npm run check` passes. Nothing pushed; the session read decision is the user's | Verified on the branch |
 
 Future entries should include the decision changed, rationale, affected requirement/check IDs, and validation impact. Do not overwrite history to conceal a scope reduction.
