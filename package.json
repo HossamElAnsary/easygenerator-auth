@@ -28,7 +28,8 @@
     "check:foundation": "npm run lint && npm run typecheck && npm test && npm run build",
     "test:e2e": "npm run build && PLAYWRIGHT_BROWSERS_PATH=$PWD/.cache/ms-playwright node --env-file-if-exists=.env node_modules/@playwright/test/cli.js test",
     "check": "npm run lint && npm run typecheck && npm test && npm run test:e2e",
-    "bench": "npm run build && node --env-file-if-exists=.env scripts/bench.mjs"
+    "bench": "npm run build && node --env-file-if-exists=.env scripts/bench.mjs",
+    "docs:openapi": "npm run build -w @easy-generator/contracts && npm run build -w @easy-generator/api && node scripts/write-openapi.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -48,6 +49,7 @@
   "allowScripts": {
     "@swc/core@1.16.18": true,
     "argon2@0.45.1": true,
+    "@scarf/scarf": false,
     "fsevents": false
   }
 }

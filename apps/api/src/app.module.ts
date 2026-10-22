@@ -9,6 +9,7 @@ import {
 } from './http/rate-limits.js';
 import { CoreModule } from './infrastructure/core.module.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
+import { ApiDocsModule } from './modules/api-docs/index.js';
 import { AuthModule, SessionGuard } from './modules/auth/index.js';
 import { HealthModule } from './modules/health/index.js';
 import { RequiredIndexes } from './startup-indexes.js';
@@ -32,6 +33,8 @@ export class AppModule {
         }),
         AuthModule,
         HealthModule,
+        // Architecture A09: the API documentation is not served in production.
+        ...(config.mode === 'production' ? [] : [ApiDocsModule]),
       ],
       providers: [
         // Global guards run in this order: throttling precedes authentication,

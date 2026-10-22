@@ -1,3 +1,7 @@
 export { SESSION_INDEXES } from './session.indexes.js';
 export { SessionsModule } from './sessions.module.js';
-export { type IssuedSession, SessionsService } from './sessions.service.js';
+export {
+  type IssuedSession,
+  SESSION_LIFETIME_MS,
+  SessionsService,
+} from './sessions.service.js';
