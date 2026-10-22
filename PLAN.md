@@ -23,7 +23,7 @@ Agent working instructions live in [AGENTS.md](AGENTS.md). This plan and its lin
 | [Delivery](docs/plan/delivery.md) | Ordered work, dependencies, milestone status, risks, and change history |
 | [Verification](docs/plan/verification.md) | Acceptance checks, evidence, and release criteria |
 | [Evolution register](docs/plan/evolution.md) | Improvements weighed and deferred or rejected, by layer, with the scale stage and trigger that would bring each back (from v1.4) |
-| [AI assistance record](AI.md) | Actual AI involvement and engineering corrections, updated during the work |
+| [AI assistance summary](AI.md) and [record](docs/ai-record.md) | Actual AI involvement and engineering corrections: AI.md summarizes for reviewers; the record is updated during the work |
 
 ## Source of truth and change control
 

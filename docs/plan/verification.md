@@ -283,7 +283,7 @@ Revisions: `76fd472`, `c25c6da`, `32cd707` (CI run #5), `3a178a0`, `88cc7c1`, `c
 | R07 | T06 | Pass | `GET /api/auth/me` requires a valid, unexpired server-side session |
 | R08 | T12, T14 | Pass | README followed from a clean checkout; its misleading steps fixed |
 | R09 | T15 | Pending (M6) | The repository is private; the link has not been handed over |
-| R10 | T14 | Pass | AI.md records the assisted areas, approaches, corrections, and evidence through M5 |
+| R10 | T14 | Pass | AI.md records the assisted areas, approaches, corrections, and evidence through M5. From 2026-10-22, AI.md is a summary compiled from every session transcript (tools and models, the AI-written share, agent working time, six quoted prompts, corrections with their commits, and the user's decisions), and `docs/ai-record.md` keeps the full milestone log |
 | R11 | T04–T08, T12, T16 | Pass | Security, configuration, and code reviews with defects fixed and limits disclosed |
 | B01 | T06, T09, T10 | Pass | Server revocation, browser logout, failure handling |
 | B02 | T02–T10 | Pass | 255 workspace and 10 browser tests |

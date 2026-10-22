@@ -32,7 +32,8 @@ The user selected **React with TypeScript** and a **clean, minimal, professional
 | [Delivery](docs/plan/delivery.md) | Work order, milestone progress, planned commands, risks, change history |
 | [Verification](docs/plan/verification.md) | Acceptance checks, evidence ledger, completion gates |
 | [Evolution register](docs/plan/evolution.md) | Improvements weighed and deferred or rejected, by layer, with their scale stage and trigger |
-| [AI.md](AI.md) | Actual AI involvement, effective approaches, corrections, decisions, validation |
+| [AI.md](AI.md) | Summary of actual AI involvement, effective prompts, corrections, and the user's decisions, written for the assignment's reviewers |
+| [AI record](docs/ai-record.md) | The detailed milestone-by-milestone AI log behind AI.md: files, approaches, corrections, validation |
 
 Follow the user's current request and existing authorization to determine the phase. Planning requests produce planning artifacts. When implementation is requested, continue from the appropriate unfinished milestone and proceed through the authorized scope without requesting permission for routine steps.
 
@@ -75,7 +76,7 @@ The baseline deliberately uses no JWT, refresh-token flow, or RBAC; authorizatio
 2. Make the smallest complete change that satisfies the behavior. Add meaningful tests for validation, authentication, persistence, or state risks; avoid tests that merely mirror implementation or low-impact styling.
 3. Run the appropriate available checks. Planned commands are in Delivery; once implemented, verify scripts in `package.json` and instructions in README before using them. Do not report a planned command as executed.
 4. Record actual results in Verification and milestone progress in Delivery. A partial check stays Pending until all its criteria pass; distinguish local results from remote CI and submission.
-5. Update AI.md with actual assistance and useful corrections/decisions, plus relevant README or contract changes. Report what changed, what was verified, and any remaining issue.
+5. Append the actual assistance and useful corrections/decisions to [docs/ai-record.md](docs/ai-record.md), and update AI.md's summary only when the change alters it; also update relevant README or contract changes. Report what changed, what was verified, and any remaining issue.
 
 When an improvement is challenged and deferred or rejected, add or update its Evolution register entry in the same change as its Delivery change-log row; never add an entry nobody has weighed. Record material scope, contract, architecture, or selected-extra changes in Delivery's change log before dependent implementation. Update the owning document and affected checks together; preserve stable IDs. Routine implementation decisions within the baseline need no additional approval. Do not silently rewrite acceptance criteria to fit incomplete code.
 
