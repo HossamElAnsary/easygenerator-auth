@@ -1,6 +1,6 @@
 import {
   createContext,
-  useContext,
+  use,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -9,13 +9,31 @@ import {
 } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router';
-import type { SigninRequest, SignupRequest } from '@easy-generator/contracts';
+import type {
+  PublicUser,
+  SigninRequest,
+  SignupRequest,
+} from '@easy-generator/contracts';
 import { ApiError, authApi } from '../api/client';
 import { clearUserData, sessionKey, sessionOptions } from './session';
 
 type AuthStatus = 'checking' | 'unavailable' | 'authenticated' | 'anonymous';
 
-function useCoordinator() {
+// What screens may rely on. The user itself stays in the session query.
+export type AuthContextValue = {
+  status: AuthStatus;
+  // The session check has answered at least once (a user or none).
+  hasVerifiedOnce: boolean;
+  error: Error | null;
+  expired: boolean;
+  actionPending: boolean;
+  retry: () => Promise<void>;
+  signup: (input: SignupRequest) => Promise<PublicUser>;
+  signin: (input: SigninRequest) => Promise<void>;
+  logout: () => Promise<void>;
+};
+
+function useCoordinator(): AuthContextValue {
   const client = useQueryClient();
   const location = useLocation();
   const [actionStatus, setActionStatus] = useState<AuthStatus | null>(null);
@@ -94,7 +112,7 @@ function useCoordinator() {
   }
   return {
     status: actionStatus ?? verificationStatus,
-    hasResolved: query.data !== undefined,
+    hasVerifiedOnce: query.data !== undefined,
     error: query.error,
     expired,
     actionPending: busy,
@@ -118,15 +136,13 @@ function useCoordinator() {
       }),
   };
 }
-const AuthContext = createContext<ReturnType<typeof useCoordinator> | null>(
-  null,
-);
+const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const auth = useCoordinator();
-  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
+  return <AuthContext value={auth}>{children}</AuthContext>;
 }
 export function useAuth() {
-  const auth = useContext(AuthContext);
+  const auth = use(AuthContext);
   if (!auth) throw new Error('AuthProvider is required.');
   return auth;
 }

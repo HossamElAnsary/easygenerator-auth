@@ -55,31 +55,15 @@ export function Field({
     </div>
   );
 }
-export function PasswordField({
-  signup,
-  ...props
-}: Omit<Parameters<typeof Field>[0], 'label' | 'type'> & { signup: boolean }) {
+export function PasswordField(
+  props: Omit<Parameters<typeof Field>[0], 'label' | 'type'> & {
+    autoComplete: 'new-password' | 'current-password';
+  },
+) {
   const [visible, setVisible] = useState(false);
   return (
     <div>
-      <Field
-        {...props}
-        label="Password"
-        type={visible ? 'text' : 'password'}
-        autoComplete={signup ? 'new-password' : 'current-password'}
-        hint={
-          signup ? (
-            <>
-              <span>Use 8–128 characters, including:</span>
-              <ul>
-                <li>At least one letter</li>
-                <li>At least one number</li>
-                <li>At least one special character</li>
-              </ul>
-            </>
-          ) : undefined
-        }
-      />
+      <Field {...props} label="Password" type={visible ? 'text' : 'password'} />
       {/* The label names the action, so it carries no aria-pressed state. */}
       <button
         type="button"
