@@ -57,14 +57,29 @@ function nextClient() {
   return `10.${(clientCounter >> 16) & 255}.${(clientCounter >> 8) & 255}.${clientCounter & 255}`;
 }
 
-/** A database of our own beside the test database; only it is ever dropped. */
+/**
+ * A database of our own beside the test database; only it is ever dropped.
+ * Mirrors the test harness's guard (apps/api/test/test-database.ts).
+ */
 function benchDatabaseUri() {
   const uri = process.env.MONGODB_TEST_URI ?? '';
   const parsed = new mongoose.mongo.MongoClient(uri).options;
-  if (parsed.dbName !== 'easy_generator_test' || !parsed.replicaSet)
+  if (
+    parsed.dbName !== 'easy_generator_test' ||
+    !parsed.replicaSet ||
+    parsed.directConnection
+  )
     throw new Error('Set MONGODB_TEST_URI from .env.example first.');
   const name = `easy_generator_bench_${randomBytes(6).toString('hex')}`;
-  return { name, uri: uri.replace('/easy_generator_test?', `/${name}?`) };
+  const benchUri = uri.replace('/easy_generator_test?', `/${name}?`);
+  if (
+    benchUri === uri ||
+    new mongoose.mongo.MongoClient(benchUri).options.dbName !== name
+  )
+    throw new Error(
+      'MONGODB_TEST_URI must name easy_generator_test literally.',
+    );
+  return { name, uri: benchUri };
 }
 
 function freePort() {
@@ -135,15 +150,19 @@ async function startApi(port, uri) {
   throw new Error('The API did not become ready within 30 s.');
 }
 
+const hasExited = (child) =>
+  child.exitCode !== null || child.signalCode !== null;
+
 async function stopApi(api) {
-  if (api.exitCode !== null) return;
+  if (hasExited(api)) return;
   const exited = new Promise((resolve) => api.once('exit', resolve));
   api.kill('SIGTERM');
-  await Promise.race([exited, delay(10_000)]);
-  if (api.exitCode === null) api.kill('SIGKILL');
+  // Unreferenced, so a prompt exit does not leave the timer holding the process.
+  await Promise.race([exited, delay(10_000, undefined, { ref: false })]);
+  if (!hasExited(api)) api.kill('SIGKILL');
 }
 
-async function seed(port, client) {
+async function seed(port, client, databaseName) {
   const accounts = [];
   for (let index = 0; index < SEEDED_ACCOUNTS; index += 1) {
     const email = `seed-${index}@bench.example.test`;
@@ -178,7 +197,7 @@ async function seed(port, client) {
       expiresAt: new Date(now.getTime() + SESSION_LIFETIME_MS),
     });
   }
-  await client.db().collection('sessions').insertMany(records);
+  await client.db(databaseName).collection('sessions').insertMany(records);
   return { accounts, logoutTokens };
 }
 
@@ -198,9 +217,15 @@ function summarize(latencies, statuses, seconds) {
     p50: percentile(sorted, 0.5),
     p95: percentile(sorted, 0.95),
     p99: percentile(sorted, 0.99),
-    statuses: Object.entries(statuses)
-      .map(([status, count]) => `${status}×${count}`)
-      .join(' '),
+    // Latency covers every response; flag rows where any was not a success,
+    // so a fast 429 or 503 cannot read as a fast endpoint.
+    statuses:
+      Object.entries(statuses)
+        .map(([status, count]) => `${status}×${count}`)
+        .join(' ') +
+      (Object.keys(statuses).some((status) => !/^2\d\d$/.test(status))
+        ? ' (not all successful)'
+        : ''),
   };
 }
 
@@ -283,8 +308,8 @@ function scenarios(seeded) {
 }
 
 /** Direct driver timings of the session lookup under each read concern. */
-async function readConcernProbe(client, tokenHash) {
-  const sessions = client.db().collection('sessions');
+async function readConcernProbe(client, databaseName, tokenHash) {
+  const sessions = client.db(databaseName).collection('sessions');
   const rows = [];
   for (const level of ['linearizable', 'majority', 'local']) {
     const times = [];
@@ -327,7 +352,7 @@ async function main() {
   try {
     const port = await freePort();
     api = await startApi(port, database.uri);
-    const seeded = await seed(port, client);
+    const seeded = await seed(port, client, database.name);
     const admin = client.db().admin();
     const build = await admin.command({ buildInfo: 1 });
     const journal = await admin
@@ -386,10 +411,11 @@ async function main() {
     write();
     write('| Read concern | p50 ms | p95 ms | p99 ms |');
     write('| --- | ---: | ---: | ---: |');
+    // A live session: the seeded signins are never logged out.
     const sample = createHash('sha256')
-      .update(seeded.logoutTokens.at(-1))
+      .update(seeded.accounts[0].cookie)
       .digest('hex');
-    for (const row of await readConcernProbe(client, sample))
+    for (const row of await readConcernProbe(client, database.name, sample))
       write(
         `| ${row.level} | ${fmt(row.p50)} | ${fmt(row.p95)} | ${fmt(row.p99)} |`,
       );

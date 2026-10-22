@@ -10,7 +10,7 @@ Setup is in the [README](../README.md). This guide covers the details behind it.
 | `docker compose up -d mongodb` | Start only the database for the Node workflow                              |
 | `npm run db:ready`             | Initialize the local replica set if needed and verify a writable primary   |
 | `npm run dev`                  | Watch contracts, API, and web in dependency order                          |
-| `npm run lint`                 | ESLint (including React Hooks rules) and the Prettier check; no edits      |
+| `npm run lint`                 | ESLint, the API boundary rules, and the Prettier check; no edits           |
 | `npm run format`               | Format implementation and configuration files                              |
 | `npm run typecheck`            | Strict checking of all workspaces and tests                                |
 | `npm test`                     | Shared-schema, API integration, configuration, and web tests               |
@@ -20,6 +20,7 @@ Setup is in the [README](../README.md). This guide covers the details behind it.
 | `npm run test:e2e`             | Build, then run the isolated Chromium suite                                |
 | `npm run check`                | The complete local gate: lint, typecheck, tests, builds, and browser tests |
 | `npm run check:foundation`     | The same without browsers                                                  |
+| `npm run bench`                | Build, then run the local load baseline (see Performance baseline)         |
 | `docker compose up --wait`     | The whole application in containers at `http://localhost:8080` (see below) |
 
 Exact package versions are pinned in the manifests and the single `package-lock.json`. npm 12 runs install scripts only for the versions allowed under `allowScripts` in `package.json` (Argon2 and SWC).
@@ -28,7 +29,8 @@ Exact package versions are pinned in the manifests and the single `package-lock.
 
 Tests require the running replica set and `MONGODB_TEST_URI` from `.env.example`. Missing database prerequisites fail the suite instead of silently skipping integration checks. The marker database must be named `easy_generator_test` and differ from the application database. Each test application creates `easy_generator_test_<random UUID>` and can drop only that database. A forcibly killed run may leave its generated database behind; never delete application data broadly to clean up.
 
-- **API tests** drive the real Nest HTTP pipeline and MongoDB. Driver faults are injected only to test failure paths, using the driver's own error types.
+- **API integration tests** in `apps/api/test` drive the real Nest HTTP pipeline and MongoDB. Driver faults are injected only to test failure paths, using the driver's own error types.
+- **API unit tests** sit beside the file they test as `<file>.test.ts` under `apps/api/src` and need no database. The boundary rules in `npm run lint` check them too: outside the persistence paths, a unit test that imports Mongoose or the MongoDB driver fails lint.
 - **Web tests** use jsdom and mocked HTTP.
 - **Browser tests** in `tests/e2e` run the compiled API and UI in Chromium (Playwright 1.64.1, kept in the ignored `.cache/ms-playwright`). Each case starts its own server on `http://localhost:3000` in test mode, with its own database and fresh production rate-limit counters. One worker runs the cases in order, without retries. Every case fails if the page reports a Content Security Policy violation. Screenshots and failure reports stay under the ignored `test-results/`.
 
@@ -90,6 +92,15 @@ The API listens on `127.0.0.1` only, so production runs behind an HTTPS reverse 
 Startup refuses production without that proxy trust, because every client would otherwise share one rate-limit bucket. Production issues the `__Host-session` cookie with `Secure`, and adds HSTS. Hashed assets are revalidated (`max-age=0` with ETags) rather than cached long-term.
 
 Integration tests cover production cookies and headers, and production mode was driven in Chromium through a local TLS-terminating proxy. No deployed HTTPS environment, failover, backup, or security certification is claimed.
+
+## Performance baseline
+
+`npm run bench` builds, then starts the compiled API in production mode as its own process against a throwaway `easy_generator_bench_<random>` database beside the test database, and drops only that database afterwards. It needs the replica set and `MONGODB_TEST_URI`, and takes about three minutes. An interrupted run (Ctrl+C) leaves its `easy_generator_bench_*` database behind; drop only that database. It measures signup, signin, `/api/auth/me`, and logout at 1, 4, 16, and 64 connections, with rate limits enabled: each request presents its own client address through the loopback proxy trust, as the tests do. It also times `/api/health` while signin is under load, and the session lookup under each read concern. Options: `--duration <seconds>`, `--levels 1,4,16,64`, and `--threadpool <n>` (sets `UV_THREADPOOL_SIZE` for the API).
+
+Results depend on the machine, so compare only runs from the same machine and command. The recorded baseline (Verification T19) found two things worth knowing before a deployment:
+
+- **Password hashing is limited by libuv's thread pool.** Argon2 runs there, 4 threads by default, so signup and signin throughput stops growing once concurrent hashing requests exceed the pool size, and further requests queue. `/api/health`, timed alongside, was not slowed. On a 14-CPU machine, 8 threads nearly doubled hashing throughput with no visible cost to health checks, while 16 threads raised their tail latency. Only `/api/health` was timed alongside, and nothing between 8 and 16 threads was measured, so there is no general rule: choose `UV_THREADPOOL_SIZE` per deployment and confirm it with `npm run bench -- --threadpool <n>` on that machine.
+- **An authenticated request costs about one MongoDB journal commit interval** on the single-node replica set (about 105 ms at the default 100 ms), because the session check is a linearizable read (Architecture A10). A multi-node production replica set behaves differently and needs its own measurement.
 
 ## Troubleshooting
 

@@ -28,7 +28,7 @@ First-time setup needs Docker: `npm ci`, `cp .env.example .env`, `docker compose
 Single tests (arguments after `--` go to Vitest):
 
 ```sh
-npm test -w @easy-generator/api -- test/config.test.ts -t 'secrets'
+npm test -w @easy-generator/api -- src/config/runtime-config.test.ts -t 'secrets'
 npm test -w @easy-generator/web -- src/App.test.tsx
 npm test -w @easy-generator/contracts -- -t 'rejects'
 ```
@@ -56,7 +56,7 @@ npm test -w @easy-generator/contracts -- -t 'rejects'
 - Inject every constructor dependency with an explicit `@Inject(Token)`, as existing providers do. Without it, the `consistent-type-imports` lint autofix turns a class used only as a parameter type into `import type`. The emitted decorator metadata then holds `Object`, and dependency injection fails.
 - Relative imports end in `.js` in `apps/api` and `packages/contracts` (NodeNext). In `apps/web` they have no extension (bundler resolution). Type-only imports use `import type` (`verbatimModuleSyntax`).
 - Output is silent by design. Nest's logger is disabled, and startup and `db:ready` failures print one generic line. Keep it that way (Architecture A07): raw driver errors can contain connection strings. To diagnose, check the preconditions the message names: configuration, `npm run db:ready`, built web assets when `SERVE_WEB=true`, and a free `PORT` (a dev, preview, or browser-test server may hold 3000).
-- Tests live in `test/**/*.test.ts`, compiled by SWC so decorator metadata is emitted, with `reflect-metadata` preloaded. They allow 20 s per test and 30 s per hook, because in CI the workers and MongoDB share a few CPUs; the product's 5 s database budgets are separate. `startTestApp()` (`test/support/test-app.ts`) runs the real module and pipeline against a database from `isolatedDatabase()`, which creates `easy_generator_test_<random>` and can drop only that database. It substitutes a capturing logger and a controllable `TestClock`, and accepts provider overrides for fault injection.
+- Unit tests sit beside their source as `src/**/<file>.test.ts` and follow the boundary rules; integration suites live in `test/**/*.integration.test.ts` and may import internals for fault injection (Engineering E06). Both are compiled by SWC so decorator metadata is emitted, with `reflect-metadata` preloaded. They allow 20 s per test and 30 s per hook, because in CI the workers and MongoDB share a few CPUs; the product's 5 s database budgets are separate. `startTestApp()` (`test/support/test-app.ts`) runs the real module and pipeline against a database from `isolatedDatabase()`, which creates `easy_generator_test_<random>` and can drop only that database. It substitutes a capturing logger and a controllable `TestClock`, and accepts provider overrides for fault injection.
 - The harness trusts only the loopback proxy, and its `api()` helper gives every request its own `X-Forwarded-For` client, so rate limits stay enforced without tests sharing buckets. Pass a fixed client IP to test a limit itself. Test-only controllers (`test/support/probe.module.ts`) stay in `test/`, never `src/`.
 
 ### Web (`apps/web`: React 19, Vite)

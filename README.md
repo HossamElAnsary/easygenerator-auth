@@ -63,12 +63,13 @@ npm run check
 
 | Command             | Runs                                                                 |
 | ------------------- | -------------------------------------------------------------------- |
-| `npm run lint`      | ESLint and the Prettier check                                        |
+| `npm run lint`      | ESLint, the API boundary rules, and the Prettier check               |
 | `npm run typecheck` | Strict TypeScript for every workspace                                |
 | `npm test`          | Schema, API integration (against real MongoDB), and web tests        |
 | `npm run test:e2e`  | A production build, then the Chromium journeys                       |
 | `npm run check`     | All of the above                                                     |
 | `npm run format`    | Formats the files the lint step checks (the only command that edits) |
+| `npm run bench`     | The local load baseline, described in docs/development.md            |
 
 Tests need the MongoDB replica set from the setup above, and each run uses its own generated databases. Stop `npm run dev` or `npm run preview` first, because the browser tests use port 3000. Single tests, test isolation, and CI are described in [docs/development.md](docs/development.md).
 

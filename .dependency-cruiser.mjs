@@ -1,6 +1,7 @@
 /**
  * The API's module boundaries (Engineering E02, Verification T18). `npm run
- * lint` runs these over apps/api/src only; tests may import internals.
+ * lint` runs these over apps/api/src, unit tests beside their sources
+ * included; the integration suites in apps/api/test may import internals.
  */
 const SRC = '^apps/api/src/';
 const MODULES = `${SRC}modules/`;
