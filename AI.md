@@ -2,15 +2,15 @@
 
 I built this project by directing two coding agents. They wrote the code. I made the scope and design calls, set the order of work, asked for reviews and challenges, and kept every outward-facing step (the repository, publishing it, merging pull requests) in my own hands. This page answers the brief's three questions. [docs/ai-record.md](docs/ai-record.md) holds the full log, written milestone by milestone as the work happened.
 
-This summary was compiled from the transcripts of every session (13 main sessions and their review subagents), not from memory.
+This page was drafted by Claude Code from the transcripts of every session (13 main sessions and their review subagents), not from memory; I reviewed and merged it.
 
 ## At a glance
 
 | | |
 | --- | --- |
 | **Tools** | **OpenAI Codex** in VS Code (GPT-6): reading the brief, the planning baseline, M1 (foundation), M3 (browser journey), and the final compliance review. **Claude Code** in VS Code (Claude Opus 5.5): CLAUDE.md, M2 (authentication API), M4–M10, and the infrastructure review. |
-| **What the AI wrote** | All of it: application code, tests, configuration, CI, Dockerfiles, and documentation. I wrote no code by hand. 55 of the 63 commits on `main` carry Claude Code's co-author trailer; Codex adds none, and 3 commits are my own pull-request merges. |
-| **What I did** | Chose the stack and the visual direction, asked the design questions that shaped the plan, proposed the frontend libraries, the backend layering, the Docker-only run and the evolution register, authorized each milestone, created and published the GitHub repository, and merged pull requests #1–#3 after their CI passed. |
+| **What the AI wrote** | All of it: application code, tests, configuration, CI, Dockerfiles, and documentation. I wrote no code by hand. Claude Code's commits carry its co-author trailer, Codex adds none, and the merge commits on `main` are my own pull-request merges. |
+| **What I did** | Chose the stack and the visual direction, asked the design questions that shaped the plan, proposed the frontend libraries, the backend layering, the Docker-only run and the evolution register, authorized each milestone, created and published the GitHub repository, and merged every pull request myself after its CI passed. |
 | **Time** | About **7.5 hours** of agent working time to a complete, published submission: planning 1.2 h, M1–M5 5.9 h, publishing 0.3 h. Then about **6 hours** more on extras I asked for: the Docker-only run (1.2 h) and the backend, frontend and infrastructure reviews (5 h). The calendar span is 19–22 October. These numbers come from transcript timestamps, counting only gaps under 15 minutes, so they measure the agents' working time, not my exact hours. |
 
 ## How I worked
@@ -36,6 +36,7 @@ Quoted from the transcripts, shortened with "…", with typos fixed.
 
 | What went wrong | How it was caught | Fix |
 | --- | --- | --- |
+| After publishing, the AI declared the project ready for handoff. But a reviewer without Node could not run it, and the README was 21.5 KB of setup, history, and reference mixed together | **I caught it** while reviewing the result as a reviewer would: *"we are not finished yet"* | A Docker-only run (`docker compose up --wait`, no Node) and a README cut to 8.7 KB, then verified from a fresh clone (M7) |
 | The planned session check cleared the cookie on a 401, so a slow, stale response could log out a newer signin | Planning review of the race | `GET /api/auth/me` never sets or clears cookies |
 | After a 429, the countdown that re-enables the button could stay stuck until reload | CI run #1. It looked flaky; the AI's first theory (a stale clock) didn't reproduce. Sampling 3,000 timers showed some fire 1 ms early | A deterministic failing test, then the fix (`4bf2f2c`) |
 | Four unsafe configurations were accepted: production with `TRUST_PROXY=false` (one shared rate-limit bucket), a public origin in development (a cookie without `Secure`), a deprecated `wtimeout` URI option overriding the 5 s write budget, and asset errors returned as 404 | An independent review agent in M4 | Reproduced each one, fixed it test-first (`694b6f2`) |
@@ -54,7 +55,7 @@ Quoted from the transcripts, shortened with "…", with typos fixed.
 - **Plan first, with AGENTS.md as the shared guide.** This is why separate chats and two different tools stayed consistent.
 - **React Hook Form and TanStack Query.** The AI's first plan tracked form and request state by hand. I proposed the libraries, and the plan was rebuilt around them.
 - **Asking the authentication questions explicitly.** I took the AI's recommendation (opaque sessions, no JWT, no RBAC), but only after it had to justify each part separately.
-- **The Docker-only run and a shorter README.** I asked for these after the AI had already declared the project ready for handoff: *"we are not finished yet"*. The README went from 21.5 KB to 8.7 KB.
+- **The Docker-only run and a shorter README.** My response to the gap in the first row of the table above: I specified a Dockerfile per service and one Compose file, so anyone can run the whole application with one command.
 - **The backend layering.** I proposed separating the repository, business, and HTTP layers, and asked the AI to compare the backend with my own NestJS template. It took the template's enforced import rules and its abstract-class ports, and rejected the template's extra repository layer, with reasons. The boundaries are now checked in `npm run lint`.
 - **The [evolution register](docs/plan/evolution.md).** It was my idea: a file per layer that records the improvements we weighed and deferred, and what would make each worth doing. The AI added the rule that an entry needs a real decision and an observable trigger, so the file doesn't turn into a wishlist.
 - **Outward actions stay mine.** I created the repository, authorized making it public, and merged every pull request myself. The recruiter message is sent only when I decide.
