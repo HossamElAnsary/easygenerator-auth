@@ -63,7 +63,7 @@ npm run check
 
 | Command             | Runs                                                                 |
 | ------------------- | -------------------------------------------------------------------- |
-| `npm run lint`      | ESLint, the API boundary rules, and the Prettier check               |
+| `npm run lint`      | ESLint, the API and web boundary rules, and the Prettier check       |
 | `npm run typecheck` | Strict TypeScript for every workspace                                |
 | `npm test`          | Schema, API integration (against real MongoDB), and web tests        |
 | `npm run test:e2e`  | A production build, then the Chromium journeys                       |

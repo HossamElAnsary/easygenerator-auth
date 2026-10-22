@@ -17,7 +17,7 @@ Return to [PLAN.md](../../PLAN.md). This document owns implementation choices an
 | Contracts | Shared Zod schemas, inferred TypeScript request/response types, and policy constants | One validation policy used by browser and server |
 | Security libraries | Maintained Argon2 package, cookie parser, Helmet, Nest throttler | Standard implementations for hashing, cookies, headers, and throttling |
 | Verification | Vitest-compatible Nest test setup, Supertest, React Testing Library where useful, Playwright | Contract/integration checks plus a small browser suite |
-| Boundary and performance tooling (v1.4) | `dependency-cruiser` in `npm run lint` (M8); a pinned HTTP load generator for the local performance baseline (M9) | Engineering E02's module rules fail the gate when broken (T18); performance claims rest on repeatable measurements (T19). Exact versions are pinned when each milestone installs them |
+| Boundary and performance tooling (v1.4) | `dependency-cruiser` in `npm run lint` (M8; from v1.5 also over the web app's layers, M10); a pinned HTTP load generator for the local performance baseline (M9) | Engineering E02's module rules fail the gate when broken (T18); performance claims rest on repeatable measurements (T19). Exact versions are pinned when each milestone installs them |
 
 M1 pins compatible stable versions, the MongoDB image, and the Node/npm versions. Commit the lockfile; use `npm ci` thereafter. Do not use unpinned `latest` images or silently mix Nest package majors. The foundation gate must prove backend dependency injection, validation, shared-package imports, tests, and builds before feature work proceeds.
 

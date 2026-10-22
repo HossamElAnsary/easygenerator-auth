@@ -10,7 +10,7 @@ Setup is in the [README](../README.md). This guide covers the details behind it.
 | `docker compose up -d mongodb` | Start only the database for the Node workflow                              |
 | `npm run db:ready`             | Initialize the local replica set if needed and verify a writable primary   |
 | `npm run dev`                  | Watch contracts, API, and web in dependency order                          |
-| `npm run lint`                 | ESLint, the API boundary rules, and the Prettier check; no edits           |
+| `npm run lint`                 | ESLint, the API and web boundary rules, and the Prettier check; no edits   |
 | `npm run format`               | Format implementation and configuration files                              |
 | `npm run typecheck`            | Strict checking of all workspaces and tests                                |
 | `npm test`                     | Shared-schema, API integration, configuration, and web tests               |
