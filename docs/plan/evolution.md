@@ -35,8 +35,9 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 | [EV-HTTP-01](#ev-http-01--a-shared-rate-limit-store) | A shared rate-limit store | Deferred | S3 | M |
 | [EV-HTTP-02](#ev-http-02--per-account-signin-limits) | Per-account signin limits | Deferred | S2 | M |
 | [EV-HTTP-03](#ev-http-03--api-versioning) | API versioning | Deferred | S4 | M |
-| [EV-PERF-01](#ev-perf-01--bounded-password-hashing-and-thread-pool-sizing) | Bounded password hashing and thread-pool sizing | Adopted (M9) | S1 | S |
-| [EV-DATA-01](#ev-data-01--the-session-read-policy) | The session read policy | Adopted (M9 measures; the user decides) | S1 | S |
+| [EV-PERF-01](#ev-perf-01--bounded-password-hashing-admission) | Bounded password-hashing admission | Deferred | S2 | M |
+| [EV-PERF-02](#ev-perf-02--thread-pool-size-per-deployment) | Thread-pool size per deployment | Adopted (M9, documentation) | S1 | S |
+| [EV-DATA-01](#ev-data-01--the-session-read-policy) | The session read policy | Measured in M9; the user decides | S1 | S |
 | [EV-DATA-02](#ev-data-02--an-index-on-sessions-user-id) | An index on sessions' user ID | Deferred | S4 | S |
 | [EV-DATA-03](#ev-data-03--a-multi-node-replica-set-with-backups-and-restore-drills) | A multi-node replica set with backups and restore drills | Deferred | S2 | L |
 | [EV-DATA-04](#ev-data-04--returning-to-mongodb-8x) | Returning to MongoDB 8.x | Deferred | S1 | S |
@@ -57,8 +58,8 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 
 ### EV-TEST-01 — Unit tests beside their source
 
-- **Status:** Adopted. Engineering E06 sets the convention (v1.4, 2026-10-22); M9's first step moves the two existing unit tests.
-- **Today:** two of the API's 14 test files are unit tests (`config.test.ts`, `sessions-policy.test.ts`), kept in `apps/api/test/` with the integration suites.
+- **Status:** Adopted. Engineering E06 sets the convention (v1.4, 2026-10-22); M9's first step moved the two existing unit tests (`7d49a90`).
+- **Before:** two of the API's 14 test files were unit tests (`config.test.ts`, `sessions-policy.test.ts`), kept in `apps/api/test/` with the integration suites; they are now `src/config/runtime-config.test.ts` and `src/modules/sessions/sessions.service.test.ts`.
 - **Improvement:** a unit test sits beside the file it tests as `<file>.test.ts`, as the web app already does. Under `src/`, the boundary rules check unit tests too, so one that starts using the database fails lint.
 - **Why not standalone now:** moving two discoverable files solves no observed problem and would cost a full verification cycle; M9 adds unit tests anyway, so the move rides along.
 - **Source:** the user's proposal and its challenge, 2026-10-22 (Delivery change log).
@@ -155,20 +156,30 @@ Return to [PLAN.md](../../PLAN.md). This document owns improvements that were we
 
 ## Performance
 
-### EV-PERF-01 — Bounded password hashing and thread-pool sizing
+### EV-PERF-01 — Bounded password-hashing admission
 
-- **Status:** Adopted into M9, conditional on measurement.
-- **Today:** Argon2 runs on libuv's thread pool (4 threads by default) behind per-IP limits, with an unbounded wait queue.
-- **Improvement:** at most N hashes in flight and a bounded wait, answering 503 with `Retry-After` beyond it; an explicit `UV_THREADPOOL_SIZE`.
-- **Source:** the v1.4 backend review (Delivery M9).
+- **Status:** Deferred. **Stage:** S2. **Cost:** M (an A05/A07 contract addition and tests).
+- **Today:** Argon2 runs on libuv's thread pool behind per-IP limits, with an unbounded wait queue.
+- **Improvement:** at most N hashes in flight and a bounded wait, answering `503` with `Retry-After` beyond it, so overload fails fast instead of waiting toward the 15-second request timeout.
+- **Why deferred:** M9 measured the queue (Verification T19). With the default 4 threads, signup and signin stop at about 235 requests per second from 16 connections, and the median wait grows to about 270 ms at 64. The queue slowed only hashing requests: `/api/health` kept a 0.3 ms median at every load. Admission control would add a new failure response for an overload that one process behind per-IP limits does not reach at stage S1.
+- **Trigger:** production metrics showing signin or signup latency approaching the request timeout, or sustained hashing queues; or several API instances sharing one CPU budget.
+- **Source:** the v1.4 backend review; M9 measurements (Delivery change log).
+
+### EV-PERF-02 — Thread-pool size per deployment
+
+- **Status:** Adopted in M9 as deployment guidance (`docs/development.md`), with no default change.
+- **Measured:** on a 14-CPU machine, 8 threads raised hashing throughput to about 440 requests per second with `/api/health` p99 at 1.6 ms under load; 16 threads reached about 560 but raised health p99 to about 22 ms.
+- **Why not a fixed default:** the right size depends on the deployment's CPUs; 8 threads on a 2-vCPU host would oversubscribe it.
+- **Source:** M9 measurements.
 
 ## Persistence
 
 ### EV-DATA-01 — The session read policy
 
-- **Status:** Adopted into M9 for measurement; any change needs the user's decision and an A10 update first.
-- **Today:** a linearizable read on every authenticated request, about 0.1 s on the local single-node set (Architecture A10).
-- **Options:** keep it; majority reads, accepting that a deposed primary can briefly honor a revoked session; or another option the measurements surface.
+- **Status:** Measured in M9; the decision is the user's, and any change updates A10 and its checks first.
+- **Today:** a linearizable read on every authenticated request. On the single-node set it costs about 105 ms, against 0.4 ms for a majority read, because the read waits for the next journal commit: with `journalCommitInterval` set to 10, 50, and 100 ms, its median was 12.5, 54.5, and 105 ms. `/api/auth/me` throughput is therefore bounded by concurrent connections (about 9.6 requests per second each), not CPU.
+- **Options:** (1) keep it (A10 as written); (2) tune the server's journal commit interval, a deployment setting that trades more frequent journal flushes for lower latency and changes no guarantee; (3) majority reads, accepting that a deposed primary can briefly honor a revoked session during a failover; (4) linearizable reads only where revocation is confirmed, majority elsewhere, with the same risk as (3) on authenticated requests.
+- **Trigger for revisiting:** the cost measured on the real production replica set, where replication rather than the local journal timer decides it, exceeds the authenticated-request latency budget.
 - **Source:** Architecture A10; the v1.4 backend review.
 
 ### EV-DATA-02 — An index on sessions' user ID

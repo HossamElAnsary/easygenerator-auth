@@ -423,7 +423,7 @@ Other decisions:
 - **No interceptors, extra pipes, `utils`/`helpers` folders, or TypeScript enums.** Request logging must stay Express middleware to see requests that never reach a handler (404, request-control 403/415, body-parser 413). The one schema pipe covers every input. The contracts package already shares string unions and Zod enums with the web app.
 - **The kernel stays global.** Validated configuration, `AppLogger`, and `Clock` are vendor-free and used everywhere. (The plan first made the database connection an explicit import; M8 found that `@nestjs/mongoose` cannot support that, see the change log.)
 - **`@Public()` stays in `auth`** next to `SessionGuard`, which gives it meaning (A09), and is exported through `auth`'s `index.ts`; `health` imports it from there.
-- **Rule scope.** The rules cover `apps/api/src` only. Tests may import internals, because fault-injection suites reach models and providers directly. The web app keeps its current structure (E05).
+- **Rule scope.** The rules cover `apps/api/src` only (from M9, including the unit tests that sit there). Integration tests may import internals, because fault-injection suites reach models and providers directly. The web app keeps its current structure (E05).
 
 ### M8 result — 2026-10-21
 
