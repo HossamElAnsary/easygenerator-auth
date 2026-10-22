@@ -76,6 +76,34 @@ describe('browser auth state', () => {
       await screen.findByRole('heading', { name: 'Sign in' }),
     ).toBeTruthy();
   });
+  it('shows no public form before the first session answer, then redirects an authenticated visitor', async () => {
+    const pending = deferred<typeof user>();
+    vi.spyOn(authApi, 'me').mockReturnValue(pending.promise);
+    renderApp('/signin');
+    expect(screen.getByText('Checking your session…')).toBeTruthy();
+    expect(screen.queryByRole('heading')).toBeNull();
+    expect(screen.queryByLabelText('Email')).toBeNull();
+    await act(async () => pending.resolve(user));
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Welcome to the application.',
+      }),
+    ).toBeTruthy();
+  });
+  it('disables sign-out and says so while logout is pending', async () => {
+    vi.spyOn(authApi, 'me').mockResolvedValue(user);
+    const pending = deferred<undefined>();
+    vi.spyOn(authApi, 'logout').mockReturnValue(pending.promise);
+    renderApp('/app');
+    await screen.findByText('Welcome to the application.');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(
+      screen
+        .getByRole('button', { name: 'Signing out…' })
+        .hasAttribute('disabled'),
+    ).toBe(true);
+    await act(async () => pending.resolve(undefined));
+  });
   it('awaits signin, prevents duplicate actions, normalizes email, preserves password and keeps caches credential-free', async () => {
     const me = vi.spyOn(authApi, 'me').mockImplementation(anonymous);
     const pending = deferred<typeof user>();
@@ -360,12 +388,15 @@ describe('browser auth state', () => {
   });
   it('honors the rate-limit wait through input correction and requires manual resubmission', async () => {
     vi.spyOn(authApi, 'me').mockImplementation(anonymous);
-    const signin = vi.spyOn(authApi, 'signin').mockRejectedValue(
-      new ApiError('rate-limit', {
-        message: 'Too many requests.',
-        code: 'RATE_LIMITED',
-        retryAfter: 1,
-      }),
+    // Built per call, as the client builds one per response: retryAt starts then.
+    const signin = vi.spyOn(authApi, 'signin').mockImplementation(() =>
+      Promise.reject(
+        new ApiError('rate-limit', {
+          message: 'Too many requests.',
+          code: 'RATE_LIMITED',
+          retryAfter: 1,
+        }),
+      ),
     );
     renderApp();
     await fillSignin();
@@ -390,12 +421,14 @@ describe('browser auth state', () => {
   });
   it('honors Retry-After on session verification before offering Retry', async () => {
     vi.spyOn(authApi, 'me')
-      .mockRejectedValueOnce(
-        new ApiError('rate-limit', {
-          message: 'Too many requests.',
-          code: 'RATE_LIMITED',
-          retryAfter: 1,
-        }),
+      .mockImplementationOnce(() =>
+        Promise.reject(
+          new ApiError('rate-limit', {
+            message: 'Too many requests.',
+            code: 'RATE_LIMITED',
+            retryAfter: 1,
+          }),
+        ),
       )
       .mockImplementation(anonymous);
     renderApp();

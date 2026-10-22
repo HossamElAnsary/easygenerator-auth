@@ -91,6 +91,44 @@ describe('auth HTTP client', () => {
       message: 'The service is unavailable. Try again.',
     });
   });
+  it('uses the right method for each endpoint', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(response({ user }))
+      .mockResolvedValueOnce(response({ user }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetch);
+    await authApi.signin({ email: user.email, password: 'x' });
+    await authApi.me();
+    await authApi.logout();
+    expect(
+      fetch.mock.calls.map(([url, init]) => [
+        url,
+        (init as RequestInit).method,
+      ]),
+    ).toEqual([
+      ['/api/auth/signin', 'POST'],
+      ['/api/auth/me', 'GET'],
+      ['/api/auth/logout', 'POST'],
+    ]);
+  });
+  it('keeps fields and a retry wait only for the error kinds that use them', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        response(failure('EMAIL_IN_USE', { email: ['Taken'] }), 409, {
+          'Retry-After': '5',
+        }),
+      ),
+    );
+    const error = await authApi.me().catch((failure: unknown) => failure);
+    expect(error).toMatchObject({ kind: 'conflict' });
+    expect(error).toMatchObject({
+      fields: undefined,
+      retryAfter: undefined,
+      retryAt: undefined,
+    });
+  });
   it('never treats a non-401 response as confirmed anonymous', async () => {
     vi.stubGlobal(
       'fetch',
