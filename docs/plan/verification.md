@@ -421,6 +421,21 @@ Branch `refactor/m10-frontend-structure` from `63149e4`, on macOS arm64 with Nod
 | Independent review (T16, T20) | A read-only reviewer agent checked the diff `63149e4..efdfc80` against E05, A11, Experience, and T20, with its own type, lint, and mutation probes on a copy of the source | No High finding and no behavior regression: copy, notice order, prefill, remounting without `key`, mounted forms, withheld content, credentials, request shapes, `ApiError` semantics, ARIA, and CSS values and specificity were checked equal to `63149e4`. Two Medium and five Low findings, all reproduced before acting: the layer rules saw only direct imports (fixed, `51305c3`); no test held the public forms back before the first session answer, a gap since M3 (test added); nothing tested the pending sign-out button; a rate-limit test's 1 s wait started when its shared error was built, a timing that could flake on slow runners; signin's method and the kind-specific `fields` and retry wait were untested; production code could import the web test setup (all fixed, `ec1c2ea` and `51305c3`). Each new test fails against the mutation that had survived. Kept by decision: background session-check notices stay `role="status"` (Delivery's M10 decisions) |
 | Final gate | `npm run check` on `ec1c2ea` | Pass: no boundary violation (114 modules, 319 dependencies), 73 contracts / 154 API / 48 web tests, builds, 10 Chromium cases |
 
+## Infrastructure maintenance evidence — 2026-10-22
+
+Branch `ci/dependency-updates-and-schedule` from `35bb9b9`, on macOS arm64 with Node 24.22.0, npm 12.2.0, Docker 28.0.1, and Compose 2.33.1 (decisions in Delivery's infrastructure maintenance section).
+
+| Check | Method | Result |
+| --- | --- | --- |
+| Dependencies | `npm audit`; `npm audit signatures` | 0 vulnerabilities; 128 packages with verified attestations |
+| Workflow syntax (T13) | actionlint 1.7.12 (`rhysd/actionlint`, index digest `b1934ee5…`) over the repository | 0 errors in `.github/workflows/ci.yml`, including the new `schedule` trigger |
+| Dependabot configuration | `.github/dependabot.yml` converted to JSON and validated with the installed ajv 6.15.0 against SchemaStore's `dependabot-2.0.json` (draft-07); then a copy with an invalid interval and an unknown key | Valid; the broken copy fails on both (`should be equal to one of the allowed values`, `should NOT have additional properties`), so the check can fail |
+| Digest-only updates for `node` | dependabot-core's Docker `update_checker.rb` and `file_parser.rb` on GitHub, read 2026-10-22 | An ignored version keeps the current tag as the latest, and that tag's digest is still compared, unless the experiment `docker_digest_only_update_suppression` is on; `FROM` lines without a tag or digest are skipped. The behavior on GitHub is confirmed only by the first monthly run after a merge |
+| Local Docker stack | `docker compose up --wait --build` with the main checkout's `compose.yaml` (`35bb9b9`) | Every service healthy, data volume kept; `app` rebuilt (it predated M10), `proxy` and `mongodb` unchanged. `/api/health` returns 200, and `/signin` loads `index-DR3gb6Le.js`, the bundle this branch's own build produces |
+| Gate | `npm run check` on the branch | Pass: no boundary violation (111 modules, 313 dependencies), Prettier clean, 73 contracts / 154 API / 48 web tests, builds, 10 Chromium cases |
+
+The weekly schedule and Dependabot act only on the default branch, so neither has run yet.
+
 ## Release gates
 
 **Locally ready for publication:** T01–T12, T14, T16 (and from v1.3, T17) pass; CI workflow configuration is reviewed and local equivalent checks pass. T13's remote run and T15 remain explicitly pending if no remote exists.
