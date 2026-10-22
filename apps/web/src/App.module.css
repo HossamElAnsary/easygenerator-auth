@@ -1,51 +1,3 @@
-:global(*) {
-  box-sizing: border-box;
-}
-:global(body) {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #f5f6f8;
-  color: #172337;
-  line-height: 1.5;
-}
-:global(button),
-:global(input) {
-  font: inherit;
-}
-:global(button),
-:global(a) {
-  -webkit-tap-highlight-color: transparent;
-}
-:global(a) {
-  color: #174fa3;
-  text-underline-offset: 3px;
-}
-:global(button) {
-  min-height: 44px;
-  border: 1px solid #b7c1d0;
-  border-radius: 6px;
-  padding: 9px 14px;
-  background: #fff;
-  color: #172337;
-  cursor: pointer;
-}
-:global(button:disabled) {
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-:global(:focus-visible) {
-  outline: 3px solid #1965c2;
-  outline-offset: 3px;
-}
-:global(h1) {
-  font-size: 1.65rem;
-  line-height: 1.3;
-  margin: 0 0 12px;
-  overflow-wrap: anywhere;
-}
-:global(h1:focus) {
-  outline: none;
-}
 .page {
   min-height: 100dvh;
   display: grid;
@@ -56,19 +8,19 @@
   width: 100%;
   max-width: 420px;
   padding: 32px;
-  background: #fff;
-  border: 1px solid #dce1e9;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  box-shadow: 0 4px 20px #17233708;
+  box-shadow: var(--shadow-surface);
 }
 .eyebrow {
   margin: 0 0 28px;
   font-size: 0.85rem;
   font-weight: 650;
-  color: #526178;
+  color: var(--color-muted);
 }
 .description {
-  color: #526178;
+  color: var(--color-muted);
   margin: 0 0 24px;
 }
 .field {
@@ -84,16 +36,16 @@
   min-width: 0;
   min-height: 46px;
   padding: 10px 12px;
-  border: 1px solid #8794a8;
+  border: 1px solid var(--color-input-border);
   border-radius: 6px;
-  color: #172337;
-  background: #fff;
+  color: var(--color-text);
+  background: var(--color-surface);
 }
 .field input[aria-invalid='true'] {
-  border-color: #b42318;
+  border-color: var(--color-invalid-border);
 }
 .hint {
-  color: #526178;
+  color: var(--color-muted);
   font-size: 0.875rem;
   margin-top: 9px;
 }
@@ -102,31 +54,38 @@
   padding-left: 20px;
 }
 .fieldError {
-  color: #a21c12;
+  color: var(--color-error);
   font-size: 0.875rem;
   margin: 7px 0 0;
 }
 .secondary {
-  color: #174fa3;
+  color: var(--color-link);
   font-size: 0.875rem;
   margin-top: -8px;
 }
 .primary {
   width: 100%;
   margin-top: 24px;
-  background: #205bb1;
-  border-color: #205bb1;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
   color: #fff;
   font-weight: 600;
 }
-.primary:hover:not(:disabled) {
-  background: #174785;
+@media (hover: hover) {
+  .primary:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+  }
+}
+.primary:active:not(:disabled) {
+  background: var(--color-primary-active);
+  border-color: var(--color-primary-active);
 }
 .notice {
   padding: 12px;
-  border: 1px solid #c9d7eb;
+  border: 1px solid var(--color-notice-border);
   border-radius: 6px;
-  background: #f0f5fc;
+  background: var(--color-notice);
   overflow-wrap: anywhere;
 }
 .footer {
